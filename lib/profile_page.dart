@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart'; // Import HomePage
 import 'event_list_page.dart'; // Import EventListPage
-import 'gift_list_page.dart'; // Import GiftListPage
-import 'gift_details_page.dart'; // Import GiftDetailsPage
 import 'my_pledged_gifts_page.dart'; // Import MyPledgedGiftsPage
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  String username = 'User'; // Initial username value
+  bool notificationsEnabled = true; // Initial notification preference
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,29 +25,23 @@ class ProfilePage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center, // Center the profile picture
               children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: AssetImage('Assets/logo.jpeg'), // Replace with actual path
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Center align text
-              children: [
-                Text(
-                  'Welcome, User!', // Change to user's name dynamically if needed
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Center align text
-              children: [
-                Text(
-                  'Manage your gift lists and events easily.',
-                  textAlign: TextAlign.center,
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundImage: AssetImage('Assets/logo.jpeg'), // Replace with actual path
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: IconButton(
+                        icon: Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () {
+                          // Functionality to upload a new profile picture
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -51,41 +50,51 @@ class ProfilePage extends StatelessWidget {
               child: ListView(
                 children: [
                   ListTile(
-                    title: Text('View Friends\' Gift Lists'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => HomePage()),
-                      );
-                    },
-                  ),
-                  Divider(), // Adds a line between items
-                  ListTile(
-                    title: Text('View Your Events'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Your Events')),
-                      );
-                    },
-                  ),
-                  Divider(),
-                  ListTile(
-                    title: Text('View Your Gift List'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => GiftListPage(friendName: 'Your Gifts')),
-                      );
-                    },
+                    title: TextFormField(
+                      initialValue: username, // Display the initial username
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.start,
+                      decoration: InputDecoration(
+                        border: InputBorder.none, // No underline for editing
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          // Update the username with the new value
+                          username = value;
+                        });
+                      },
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        // Optional: Trigger additional functionality if needed
+                      },
+                    ),
                   ),
                   Divider(),
                   ListTile(
-                    title: Text('Create New Gift'),
+                    title: Text(
+                      'Enable Notifications',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    trailing: Switch(
+                      value: notificationsEnabled,
+                      onChanged: (value) {
+                        setState(() {
+                          notificationsEnabled = value; // Update the notification preference
+                        });
+                      },
+                    ),
+                  ),
+                  Divider(),
+                  ListTile(
+                    title: Text('Create New Event'),
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => GiftDetailsPage()),
+                        MaterialPageRoute(
+                          builder: (context) => EventListPage(friendName: 'Your Events'),
+                        ),
                       );
                     },
                   ),
@@ -95,7 +104,9 @@ class ProfilePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => MyPledgedGiftsPage()),
+                        MaterialPageRoute(
+                          builder: (context) => MyPledgedGiftsPage(),
+                        ),
                       );
                     },
                   ),

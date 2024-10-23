@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'profile_page.dart'; // Import the ProfilePage
+import 'login.dart'; // Import the ProfilePage
 
 void main() {
   runApp(HedieatyApp());
@@ -13,7 +13,7 @@ class HedieatyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: ProfilePage(), // Set the main page to ProfilePage
+      home: LoginPage(), // Set the main page to ProfilePage
     );
   }
 }
