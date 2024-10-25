@@ -1,84 +1,59 @@
 import 'package:flutter/material.dart';
 
-class GiftDetailsPage extends StatefulWidget {
-  @override
-  _GiftDetailsPageState createState() => _GiftDetailsPageState();
-}
+class GiftDetailsPage extends StatelessWidget {
+  final Map<String, String> gift;
 
-class _GiftDetailsPageState extends State<GiftDetailsPage> {
-  final TextEditingController giftNameController = TextEditingController();
-  final TextEditingController descriptionController = TextEditingController();
-  final TextEditingController categoryController = TextEditingController();
-  final TextEditingController priceController = TextEditingController();
-  final TextEditingController eventController = TextEditingController();
-
-  String giftStatus = 'Available'; // Default gift status
-
-  // Function to upload an image
-  void uploadImage() {
-    // Logic for image upload can be implemented here
-    // This can use packages like image_picker or file_picker
-    print('Upload Image functionality goes here');
-  }
+  GiftDetailsPage({required this.gift});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gift Details'),
+        title: Text(gift['name'] ?? 'Gift Details'),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center, // Center align the children
           children: [
-            TextField(
-              controller: giftNameController,
-              decoration: InputDecoration(labelText: 'Gift Name'),
+            // Centered CircleAvatar for the gift icon
+            Center(
+              child: CircleAvatar(
+                radius: 100, // Increased size for a larger avatar
+                backgroundImage: AssetImage('Assets/gift.jpg'), // Update the image path as needed
+                backgroundColor: Colors.grey[200], // Fallback color
+              ),
             ),
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: 'Description'),
-            ),
-            TextField(
-              controller: categoryController,
-              decoration: InputDecoration(labelText: 'Category'),
-            ),
-            TextField(
-              controller: priceController,
-              decoration: InputDecoration(labelText: 'Price'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: eventController,
-              decoration: InputDecoration(labelText: 'Event'),
-            ),
+            SizedBox(height: 16), // Space between avatar and text
 
-            SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: uploadImage, // Call the upload function
-              child: Text('Upload Image'),
+            // Gift details
+            Text(
+              'Name: ${gift['name'] ?? 'N/A'}',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 16.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Status:'),
-                DropdownButton<String>(
-                  value: giftStatus,
-                  items: <String>['Available', 'Pledged']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      giftStatus = newValue!; // Update the status
-                    });
-                  },
-                ),
-              ],
+            Divider(), // Divider for better separation
+
+            Text(
+              'Category: ${gift['category'] ?? 'N/A'}',
+              style: TextStyle(fontSize: 18),
+            ),
+            Divider(), // Divider for better separation
+
+            Text(
+              'Status: ${gift['status'] ?? 'N/A'}',
+              style: TextStyle(fontSize: 18),
+            ),
+            Divider(), // Divider for better separation
+
+            Text(
+              'Price: \$${gift['price'] ?? 'N/A'}',
+              style: TextStyle(fontSize: 18),
+            ),
+            Divider(), // Divider for better separation
+
+            Text(
+              'Event: ${gift['event'] ?? 'N/A'}',
+              style: TextStyle(fontSize: 18),
             ),
           ],
         ),

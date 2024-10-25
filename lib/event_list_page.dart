@@ -96,17 +96,27 @@ class _EventListPageState extends State<EventListPage> {
                     return null;
                   },
                 ),
-                TextFormField(
-                  controller: statusController,
-                  decoration: InputDecoration(labelText: 'Status (Upcoming/Current/Past)'),
+                DropdownButtonFormField<String>(
+                  value: statusController.text.isNotEmpty ? statusController.text : null,
+                  decoration: InputDecoration(labelText: 'Status'),
+                  items: ['Upcoming', 'Current', 'Past'].map((String status) {
+                    return DropdownMenuItem<String>(
+                      value: status,
+                      child: Text(status),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      statusController.text = newValue!;
+                    });
+                  },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a status';
+                      return 'Please select a status';
                     }
                     return null;
                   },
                 ),
-                // Add a Date Picker for the deadline
                 SizedBox(height: 16),
                 Text('Deadline: ${deadline.toLocal()}'.split(' ')[0]),
                 ElevatedButton(
@@ -141,20 +151,18 @@ class _EventListPageState extends State<EventListPage> {
                 if (_formKey.currentState!.validate()) {
                   setState(() {
                     if (isEditing) {
-                      // Modify the event if in edit mode
                       events[index!] = {
                         'name': nameController.text,
                         'category': categoryController.text,
                         'status': statusController.text,
-                        'deadline': deadline, // Include the deadline
+                        'deadline': deadline,
                       };
                     } else {
-                      // Add new event
                       events.add({
                         'name': nameController.text,
                         'category': categoryController.text,
                         'status': statusController.text,
-                        'deadline': deadline, // Include the deadline
+                        'deadline': deadline,
                       });
                     }
                   });
@@ -198,52 +206,62 @@ class _EventListPageState extends State<EventListPage> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(events[index]['name']!),
-            subtitle: Text(
-              '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ? events[index]['deadline'].toLocal() : 'N/A'}'.split(' ')[0],
-            ),
-            onTap: () {
-              // Navigate to Gift List Page when the event is tapped
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => GiftListPage(
-                    friendName: widget.friendName,
-                    eventName: events[index]['name']!, // Pass the event name here
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(events[index]['name']!),
+                  subtitle: Text(
+                    '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ? events[index]['deadline'].toLocal() : 'N/A'}'.split(' ')[0],
                   ),
-                ),
-              );
-            },
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit),
-                  onPressed: () {
-                    showEventForm(index: index); // Edit event details
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => GiftListPage(
+                          friendName: widget.friendName,
+                          eventName: events[index]['name']!,
+                        ),
+                      ),
+                    );
                   },
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () {
-                    deleteEvent(index); // Delete event
-                  },
-                ),
-              ],
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () {
+                          showEventForm(index: index);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          deleteEvent(index);
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showEventForm(); // Add a new event
-        },
-        child: Icon(Icons.add),
-        tooltip: 'Add Event',
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  showEventForm();
+                },
+                child: Text('Create New Event'),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

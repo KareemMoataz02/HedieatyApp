@@ -52,13 +52,6 @@ class MyPledgedGiftsPage extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Functionality to add a new pledged gift
-        },
-        child: Icon(Icons.add),
-        tooltip: 'Add Pledged Gift',
-      ),
     );
   }
 }

@@ -6,6 +6,7 @@ class LoginPage extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,7 +73,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
-
+  final TextEditingController _phoneController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +94,10 @@ class _SignUpDialogState extends State<SignUpDialog> {
             controller: _passwordController,
             decoration: InputDecoration(labelText: 'Password'),
             obscureText: true,
+          ),
+          TextField(
+            controller: _phoneController,
+            decoration: InputDecoration(labelText: 'Phone'),
           ),
         ],
       ),

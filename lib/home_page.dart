@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hedieaty/profile_page.dart';
 import 'event_list_page.dart'; // Import EventListPage
 import 'gift_list_page.dart'; // Import GiftListPage
-import 'gift_details_page.dart'; // Import GiftDetailsPage
+import 'add_gift_page.dart'; // Import GiftDetailsPage
 import 'my_pledged_gifts_page.dart'; // Import MyPledgedGiftsPage
+import 'add_friend.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -66,7 +67,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             DrawerHeader(
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: Colors.black45,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
@@ -117,7 +118,7 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => GiftDetailsPage()),
+                  MaterialPageRoute(builder: (context) => AddGiftPage()),
                 );
               },
             ),
@@ -131,45 +132,65 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
+            ListTile(
+              leading: Icon(Icons.person_add),
+              title: Text('Add a friend'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AddFriendPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
-      body: ListView.builder(
-        itemCount: filteredFriends.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundImage: AssetImage(filteredFriends[index]['profilePic']),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredFriends.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: AssetImage(filteredFriends[index]['profilePic']),
+                  ),
+                  title: Text(filteredFriends[index]['name']),
+                  subtitle: Text(
+                    filteredFriends[index]['events'] > 0
+                        ? 'Upcoming Events: ${filteredFriends[index]['events']}'
+                        : 'No Upcoming Events',
+                  ),
+                  onTap: () {
+                    // Navigate to Event List Page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EventListPage(friendName: filteredFriends[index]['name']),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-            title: Text(filteredFriends[index]['name']),
-            subtitle: Text(
-              filteredFriends[index]['events'] > 0
-                  ? 'Upcoming Events: ${filteredFriends[index]['events']}'
-                  : 'No Upcoming Events',
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Navigate to Create Event/List Page (implement as needed)
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Create Your Own Event/List')),
+                  );
+                },
+                child: Text('Create Your Own Event'),
+              )
             ),
-            onTap: () {
-              // Navigate to Event List Page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EventListPage(friendName: filteredFriends[index]['name']),
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to Create Event/List Page (implement as needed)
-          // Replace with your own implementation for creating an event or list
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Create Your Own Event/List')), // Example implementation
-          );
-        },
-        child: Icon(Icons.add),
-        tooltip: 'Create Your Own Event/List',
+          ),
+        ],
       ),
     );
   }
