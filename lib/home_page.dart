@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:hedieaty/login.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hedieaty/profile_page.dart';
-import 'event_list_page.dart'; // Import EventListPage
-import 'gift_list_page.dart'; // Import GiftListPage
-import 'add_gift_page.dart'; // Import GiftDetailsPage
-import 'my_pledged_gifts_page.dart'; // Import MyPledgedGiftsPage
+import 'event_list_page.dart';
+import 'gift_list_page.dart';
+import 'add_gift_page.dart';
+import 'my_pledged_gifts_page.dart';
 import 'add_friend.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 
 class HomePage extends StatefulWidget {
   @override
@@ -22,6 +25,22 @@ class _HomePageState extends State<HomePage> {
 
   String searchQuery = '';
 
+  // Method to log out and update shared preferences
+  Future<void> _logout() async {
+    // Update SharedPreferences to set isLoggedIn to false
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', false); // Mark as logged out
+
+    // Sign out of Firebase (if used)
+    await FirebaseAuth.instance.signOut();
+
+    // Navigate back to the Login Page after logging out
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Filter friends based on the search query
@@ -35,7 +54,7 @@ class _HomePageState extends State<HomePage> {
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
-              icon: Icon(Icons.menu), // Three-dash menu icon
+              icon: Icon(Icons.menu),
               onPressed: () {
                 Scaffold.of(context).openDrawer(); // Open the drawer
               },
@@ -43,13 +62,13 @@ class _HomePageState extends State<HomePage> {
           },
         ),
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(60.0), // Adjust the height as needed
+          preferredSize: Size.fromHeight(60.0),
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               onChanged: (value) {
                 setState(() {
-                  searchQuery = value; // Update the search query
+                  searchQuery = value;
                 });
               },
               decoration: InputDecoration(
@@ -70,12 +89,12 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.black45,
               ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 10), // Space between text and avatar
+                  SizedBox(height: 10),
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage: AssetImage('Assets/logo.jpeg'), // Replace with actual image path
+                    backgroundImage: AssetImage('Assets/logo.jpeg'),
                   ),
                 ],
               ),
@@ -107,7 +126,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GiftListPage(friendName: 'Your Gifts', eventName: 'Your Event Name'), // Add eventName here
+                    builder: (context) => GiftListPage(friendName: 'Your Gifts', eventName: 'Your Event Name'),
                   ),
                 );
               },
@@ -141,6 +160,13 @@ class _HomePageState extends State<HomePage> {
                   MaterialPageRoute(builder: (context) => AddFriendPage()),
                 );
               },
+            ),
+            Divider(),
+            // Logout Option
+            ListTile(
+              leading: Icon(Icons.exit_to_app),
+              title: Text('Logout'),
+              onTap: _logout, // Call the logout method
             ),
           ],
         ),
@@ -180,14 +206,14 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to Create Event/List Page (implement as needed)
+                  // Navigate to Create Event/List Page
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Create Your Own Event/List')),
                   );
                 },
                 child: Text('Create Your Own Event'),
-              )
+              ),
             ),
           ),
         ],

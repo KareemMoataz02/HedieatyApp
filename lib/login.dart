@@ -1,11 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_page.dart';
-
+import 'sign_up_page.dart';
 
 class LoginPage extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  Future<void> _login(BuildContext context) async {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Validation Error'),
+          content: Text('Please enter both email and password.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Save login state in shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      if (e.code == 'invalid-credential') {
+        errorMessage = 'Wrong Email or Password';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is not valid.';
+      } else {
+        errorMessage = 'An error occurred. Please try again.';
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Login Error'),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,16 +73,15 @@ class LoginPage extends StatelessWidget {
         title: Text('Login'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Add CircleAvatar with gift image
             CircleAvatar(
-              radius: 100, // Adjust the size of the icon
-              backgroundImage: AssetImage('Assets/gift.jpg'), // Image path
+              radius: 50,
+              backgroundImage: AssetImage('Assets/gift.jpg'),
             ),
-            SizedBox(height: 20), // Space between the icon and text fields
+            SizedBox(height: 20),
             TextField(
               controller: _emailController,
               decoration: InputDecoration(labelText: 'Email'),
@@ -35,23 +93,14 @@ class LoginPage extends StatelessWidget {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                // Logic to handle login validation
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomePage()),
-                );
-              },
+              onPressed: () => _login(context),
               child: Text('Login'),
             ),
             TextButton(
               onPressed: () {
-                // Open SignUp Dialog
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return SignUpDialog(); // Call the SignUp dialog here
-                  },
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignUpPage()),
                 );
               },
               child: Text('Don\'t have an account? Sign Up'),
@@ -59,66 +108,6 @@ class LoginPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-
-class SignUpDialog extends StatefulWidget {
-  @override
-  _SignUpDialogState createState() => _SignUpDialogState();
-}
-
-class _SignUpDialogState extends State<SignUpDialog> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Sign Up'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _usernameController,
-            decoration: InputDecoration(labelText: 'Username'),
-          ),
-          TextField(
-            controller: _emailController,
-            decoration: InputDecoration(labelText: 'Email'),
-          ),
-          TextField(
-            controller: _passwordController,
-            decoration: InputDecoration(labelText: 'Password'),
-            obscureText: true,
-          ),
-          TextField(
-            controller: _phoneController,
-            decoration: InputDecoration(labelText: 'Phone'),
-          ),
-        ],
-      ),
-      actions: [
-        ElevatedButton(
-          onPressed: () {
-            // Logic to handle sign up
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => HomePage()),
-            );
-          },
-          child: Text('Sign Up'),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context); // Close the dialog
-          },
-          child: Text('Cancel'),
-        ),
-      ],
     );
   }
 }
