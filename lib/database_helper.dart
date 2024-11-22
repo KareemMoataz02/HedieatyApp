@@ -132,7 +132,6 @@ class DatabaseHelper {
   }
 
   // MARK: - Friend Operations
-
   Future<void> _createFriendsTable(Database db) async {
     await db.execute('''
       CREATE TABLE friends (
@@ -221,8 +220,6 @@ class DatabaseHelper {
     )
   ''');
   }
-
-
 
   // Insert event
   Future<int> insertEvent(Map<String, dynamic> event) async {
