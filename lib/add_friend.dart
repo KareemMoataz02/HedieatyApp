@@ -12,32 +12,68 @@ class AddFriendPage extends StatefulWidget {
 
 class _AddFriendPageState extends State<AddFriendPage> {
   List<Map<String, dynamic>> recentFriends = [];
-  bool isLoading = true; // To show loading state initially
 
   @override
   void initState() {
     super.initState();
-    fetchRecentFriends(); // Fetch recent friends when the page initializes
-  }
-
-  // Fetch recent friends from the database
-  void fetchRecentFriends() async {
-    int userId = await getCurrentUserId();
-    final dbHelper = DatabaseHelper();
-    final friends = await dbHelper.getRecentFriendsByUserId(userId);
-
-    setState(() {
-      recentFriends = friends;
-      isLoading = false; // Set loading to false after data fetch
-    });
+    fetchRecentFriends();
   }
 
   // Get current user ID based on email
   Future<int> getCurrentUserId() async {
     final dbHelper = DatabaseHelper();
     var currentUser = await dbHelper.getUserByEmail(widget.email);
-    return currentUser?['id'] ?? 0; // Return 0 if no user is found
+    return currentUser?['id'] ?? 0; // Return 0 if no user found
   }
+
+  // Add friend by email or phone
+  void addFriend(String input, {required bool isEmail}) async {
+    if (input.isEmpty) {
+      showDialogMessage('Error', 'Please enter a valid email or phone number');
+      return;
+    }
+
+    final dbHelper = DatabaseHelper();
+    var user = isEmail
+        ? await dbHelper.getUserByEmail(input)
+        : await dbHelper.getUserByPhone(input);
+
+    if (user != null) {
+      int userId = await getCurrentUserId();
+      int friendId = user['id'];
+
+      if (userId == friendId) {
+        showDialogMessage('Error', 'You cannot add yourself as a friend');
+        return;
+      }
+
+      bool existingFriend = await dbHelper.checkIfFriendExists(userId, friendId);
+      if (existingFriend) {
+        showDialogMessage('Error', 'This user is already your friend');
+      } else {
+        await dbHelper.addFriend(userId, friendId);
+        fetchRecentFriends();
+        showDialogMessage('Success', 'Friend added successfully');
+      }
+    } else {
+      showDialogMessage('Error', 'No user found with this information');
+    }
+  }
+
+  // Fetch recent friends
+  void fetchRecentFriends() async {
+    int userId = await getCurrentUserId();
+    final dbHelper = DatabaseHelper();
+
+    // Fetch the recent friends from the database
+    final friends = await dbHelper.getRecentFriendsByUserId(userId);
+
+    setState(() {
+      recentFriends = friends;
+      print(recentFriends);
+    });
+  }
+
 
   // Show dialog with a message
   void showDialogMessage(String title, String message) {
@@ -60,11 +96,6 @@ class _AddFriendPageState extends State<AddFriendPage> {
     );
   }
 
-  // Add friend logic (remains unchanged)
-  void addFriend(String input, {required bool isEmail}) async {
-    // ... Add your existing addFriend implementation here
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,7 +105,6 @@ class _AddFriendPageState extends State<AddFriendPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ElevatedButton(
               onPressed: () {
@@ -83,28 +113,13 @@ class _AddFriendPageState extends State<AddFriendPage> {
               child: Text('Add Friend by Email or Phone'),
             ),
             SizedBox(height: 16),
-            Text(
-              'Recent Friends:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            isLoading
-                ? Center(child: CircularProgressIndicator()) // Show loading spinner
-                : Expanded(
-              child: recentFriends.isEmpty
-                  ? Center(
-                child: Text(
-                  'No recent friends found. Add some to see them here!',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              )
-                  : ListView.builder(
+            Text('Recent Friends:'),
+            Expanded(
+              child: ListView.builder(
                 itemCount: recentFriends.length,
                 itemBuilder: (context, index) {
                   final friend = recentFriends[index];
                   return ListTile(
-                    leading: CircleAvatar(
-                      child: Icon(Icons.person),
-                    ),
                     title: Text(friend['email'] ?? 'No email'),
                     subtitle: Text(friend['phone'] ?? 'No phone'),
                   );
@@ -177,6 +192,6 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
   // Phone validation (basic validation)
   bool _isValidPhone(String phone) {
-    return RegExp(r'^[0-9]{10,15}$').hasMatch(phone); // Adjust format as per requirements
+    return RegExp(r'^[0-9]{10,15}$').hasMatch(phone); // Adjust format as needed
   }
 }

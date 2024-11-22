@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -38,7 +39,6 @@ class DatabaseHelper {
     await _createEventsTable(db);
     await _createGiftsTable(db);
     await _createFriendsTable(db);
-    await _createRecentFriendsTable(db);
   }
 
   // MARK: - Table Definitions
@@ -56,68 +56,14 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> _createEventsTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        date TEXT NOT NULL,
-        location TEXT,
-        description TEXT,
-        user_id INTEGER,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-      )
-    ''');
-  }
-
-  Future<void> _createGiftsTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE gifts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        price REAL,
-        status TEXT,
-        event_id INTEGER,
-        FOREIGN KEY(event_id) REFERENCES events(id)
-      )
-    ''');
-  }
-
-  Future<void> _createFriendsTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE friends (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        friend_id INTEGER NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id),
-        FOREIGN KEY(friend_id) REFERENCES users(id)
-      )
-    ''');
-  }
-
-  Future<void> _createRecentFriendsTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE recent_friends (
-        user_id INTEGER,
-        email TEXT,
-        phone TEXT,
-        added_at INTEGER,
-        PRIMARY KEY(user_id, email, phone),
-        FOREIGN KEY(user_id) REFERENCES users(id)
-      )
-    ''');
-  }
-
-  // MARK: - User Operations
-
   Future<int> insertUser(Map<String, dynamic> user) async {
     final db = await database;
-    return await db.insert('users', user, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert(
+        'users', user, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<Map<String, dynamic>?> getUserByEmailOrPhone(String email, String phone) async {
+  Future<Map<String, dynamic>?> getUserByEmailOrPhone(String email,
+      String phone) async {
     final db = await database;
     final results = await db.query(
       'users',
@@ -187,6 +133,19 @@ class DatabaseHelper {
 
   // MARK: - Friend Operations
 
+  Future<void> _createFriendsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE friends (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        friend_id INTEGER NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(friend_id) REFERENCES users(id)
+      )
+    ''');
+  }
+
+  // MARK: - User Operations
   Future<void> addFriend(int userId, int friendId) async {
     final db = await database;
 
@@ -230,75 +189,79 @@ class DatabaseHelper {
     return result.isNotEmpty;
   }
 
-
-  // MARK: - Recent Friends Operations
-
-  Future<int> addRecentFriend(int userId, String email, String phone) async {
-    final db = await database;
-    int timestamp = DateTime.now().millisecondsSinceEpoch;
-    return await db.insert('recent_friends', {
-      'user_id': userId,
-      'email': email,
-      'phone': phone,
-      'added_at': timestamp,
-    });
-  }
-
   Future<List<Map<String, dynamic>>> getRecentFriendsByUserId(int userId) async {
     final db = await database;
-    return await db.query(
-      'recent_friends',
-      where: 'user_id = ?',
-      whereArgs: [userId],
-      orderBy: 'added_at DESC',
-    );
+
+    // Fetch the most recent 5 friends based on friend_id order
+    final result = await db.rawQuery('''
+    SELECT u.id, u.username, u.email, u.phone, u.imagePath
+    FROM users u
+    INNER JOIN friends f ON u.id = f.friend_id
+    WHERE f.user_id = ?
+    ORDER BY f.friend_id DESC
+    LIMIT 10
+  ''', [userId]);
+
+    return result;
   }
 
-  // Insert a new event
+
+  Future<void> _createEventsTable(Database db) async {
+    // Create the new 'events' table
+    await db.execute('''
+    CREATE TABLE events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      status TEXT NOT NULL,
+      deadline TEXT NOT NULL,
+      email TEXT NOT NULL,
+      user_id INTEGER, -- Added user_id column for foreign key
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+  ''');
+  }
+
+
+
+  // Insert event
   Future<int> insertEvent(Map<String, dynamic> event) async {
-    Database db = await database;
+    final db = await database;
     return await db.insert('events', event);
   }
 
-  // Update an existing event
+  // Update event
   Future<int> updateEvent(int id, Map<String, dynamic> event) async {
-    Database db = await database;
-    return await db.update(
-      'eventsTable',
-      event,
-      where: 'Id = ?',
-      whereArgs: [id],
-    );
+    final db = await database;
+    return await db.update('events', event, where: 'id = ?', whereArgs: [id]);
   }
 
-  // Delete an event by ID
+  // Delete event
   Future<int> deleteEvent(int id) async {
-    Database db = await database;
-    return await db.delete(
-      'events',
-      where: 'Id = ?',
-      whereArgs: [id],
-    );
+    final db = await database;
+    return await db.delete('events', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Get all events from the database
-  Future<List<Map<String, dynamic>>> getAllEvents() async {
-    Database db = await database;
-    return await db.query('events');
+  // Get events by email
+  Future<List<Map<String, dynamic>>> getEventsByEmail(String email) async {
+    final db = await database;
+    return await db.query('events', where: 'email = ?', whereArgs: [email]);
   }
 
-  // Get an event by its ID
-  Future<Map<String, dynamic>?> getEventById(int id) async {
-    Database db = await database;
-    var result = await db.query(
-      'events',
-      where: 'Id = ?',
-      whereArgs: [id],
-    );
-    if (result.isNotEmpty) {
-      return result.first;
-    }
-    return null;
+
+  Future<void> _createGiftsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE gifts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT,
+        price REAL,
+        status TEXT,
+        event_id INTEGER,
+        FOREIGN KEY(event_id) REFERENCES events(id)
+      )
+    ''');
   }
+
 }
-

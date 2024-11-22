@@ -4,34 +4,47 @@ import 'gift_list_page.dart'; // Import GiftListPage
 import 'package:intl/intl.dart';
 
 class EventListPage extends StatefulWidget {
-  final String friendName;
+  final String email;
 
-  EventListPage({required this.friendName});
+  EventListPage({required this.email});
 
   @override
   _EventListPageState createState() => _EventListPageState();
 }
 
 class _EventListPageState extends State<EventListPage> {
-  List<Map<String, dynamic>> events = []; // Empty list initially
-  String sortBy = 'name'; // Default sorting criteria
+  List<Map<String, dynamic>> events = [];
+  String sortBy = 'name';
+  String? selectedCategory;
+  String? selectedStatus;
+  String username = ''; // To store the user's username
 
   @override
   void initState() {
     super.initState();
+    _loadUsername(); // Load the username when the page initializes
     _loadEvents();
   }
 
-  // Load events from the database
+  // Function to fetch username associated with the email
+  Future<void> _loadUsername() async {
+    final dbHelper = DatabaseHelper();
+    final user = await dbHelper.getUserByEmail(widget.email); // Assuming getUserByEmail fetches the user data
+    setState(() {
+      username = user?['username'] ?? 'User'; // Assign username, or 'User' if not found
+    });
+  }
+
+  // Function to load events from the database
   Future<void> _loadEvents() async {
     final dbHelper = DatabaseHelper();
-    final eventList = await dbHelper.getAllEvents(); // Get all events from DB
+    final eventList = await dbHelper.getEventsByEmail(widget.email);
     setState(() {
       events = eventList;
     });
   }
 
-  // Sort events based on selected criteria
+  // Function to sort events based on selected criterion
   void sortEvents() {
     setState(() {
       if (sortBy == 'name') {
@@ -44,23 +57,23 @@ class _EventListPageState extends State<EventListPage> {
     });
   }
 
-  // Function to create or edit an event
+  // Function to show the event form (both for creating and editing)
   void showEventForm({int? index}) {
     final isEditing = index != null;
     final event = isEditing
         ? events[index!]
         : {
       'name': '',
-      'category': '',
-      'status': '',
-      'deadline': DateTime.now(), // Default deadline is current date
+      'category': 'Formal',
+      'status': 'Upcoming',
+      'deadline': DateTime.now(),
     };
 
     final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: event['name']);
-    final categoryController = TextEditingController(text: event['category']);
-    final statusController = TextEditingController(text: event['status']);
-    DateTime deadline = event['deadline'] ?? DateTime.now(); // Default deadline
+    selectedCategory = event['category'];
+    selectedStatus = event['status'];
+    DateTime deadline = event['deadline'] ?? DateTime.now();
 
     showDialog(
       context: context,
@@ -82,18 +95,39 @@ class _EventListPageState extends State<EventListPage> {
                     return null;
                   },
                 ),
-                TextFormField(
-                  controller: categoryController,
-                  decoration: InputDecoration(labelText: 'Category'),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'Formal',
+                      child: Text('Formal'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Personal',
+                      child: Text('Personal'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Gathering',
+                      child: Text('Gathering'),
+                    ),
+                  ],
+                  onChanged: (newValue) {
+                    setState(() {
+                      selectedCategory = newValue;
+                    });
+                  },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a category';
+                      return 'Please select a category';
                     }
                     return null;
                   },
                 ),
                 DropdownButtonFormField<String>(
-                  value: statusController.text.isNotEmpty ? statusController.text : null,
+                  value: selectedStatus,
                   decoration: InputDecoration(labelText: 'Status'),
                   items: ['Upcoming', 'Current', 'Past'].map((String status) {
                     return DropdownMenuItem<String>(
@@ -103,7 +137,7 @@ class _EventListPageState extends State<EventListPage> {
                   }).toList(),
                   onChanged: (String? newValue) {
                     setState(() {
-                      statusController.text = newValue!;
+                      selectedStatus = newValue;
                     });
                   },
                   validator: (value) {
@@ -114,7 +148,7 @@ class _EventListPageState extends State<EventListPage> {
                   },
                 ),
                 SizedBox(height: 16),
-                Text('Deadline: ${DateFormat('yyyy-mm-dd').format(deadline)}'),
+                Text('Deadline: ${DateFormat('yyyy-MM-dd').format(deadline)}'),
                 ElevatedButton(
                   onPressed: () async {
                     final DateTime? picked = await showDatePicker(
@@ -148,18 +182,19 @@ class _EventListPageState extends State<EventListPage> {
                   final dbHelper = DatabaseHelper();
                   final newEvent = {
                     'name': nameController.text,
-                    'category': categoryController.text,
-                    'status': statusController.text,
-                    'deadline': deadline.toIso8601String(), // Save the deadline as string
+                    'category': selectedCategory,
+                    'status': selectedStatus,
+                    'deadline': deadline.toIso8601String(),
+                    'email': widget.email,
                   };
 
                   if (isEditing) {
-                    await dbHelper.updateEvent(event['id'], newEvent); // Update event in DB
+                    await dbHelper.updateEvent(event['id'], newEvent);
                   } else {
-                    await dbHelper.insertEvent(newEvent); // Insert new event into DB
+                    await dbHelper.insertEvent(newEvent);
                   }
 
-                  _loadEvents(); // Refresh the event list after add/edit
+                  _loadEvents(); // Refresh the event list
                   Navigator.of(context).pop();
                 }
               },
@@ -173,9 +208,9 @@ class _EventListPageState extends State<EventListPage> {
   // Function to delete an event
   void deleteEvent(int index) async {
     final dbHelper = DatabaseHelper();
-    await dbHelper.deleteEvent(events[index]['id']); // Delete event from DB
+    await dbHelper.deleteEvent(events[index]['id']);
     setState(() {
-      events.removeAt(index); // Remove event from the list
+      events.removeAt(index);
     });
   }
 
@@ -183,7 +218,7 @@ class _EventListPageState extends State<EventListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.friendName}\'s Events'),
+        title: Text('Events'), // Show the username instead of email
         actions: [
           DropdownButton<String>(
             value: sortBy,
@@ -193,7 +228,8 @@ class _EventListPageState extends State<EventListPage> {
                 sortEvents();
               });
             },
-            items: <String>['name', 'category', 'status'].map<DropdownMenuItem<String>>((String value) {
+            items: <String>['name', 'category', 'status']
+                .map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
                 value: value,
                 child: Text('Sort by $value'),
@@ -211,15 +247,14 @@ class _EventListPageState extends State<EventListPage> {
                 return ListTile(
                   title: Text(events[index]['name']!),
                   subtitle: Text(
-                    '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ?
-                    DateFormat('yyyy-MM-dd').format(DateTime.tryParse(events[index]['deadline']) ?? DateTime.now()) : 'N/A'}',
-                ),
+                    '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.tryParse(events[index]['deadline']) ?? DateTime.now()) : 'N/A'}',
+                  ),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => GiftListPage(
-                          friendName: widget.friendName,
+                          friendName: widget.email,
                           eventName: events[index]['name']!,
                         ),
                       ),
@@ -252,7 +287,7 @@ class _EventListPageState extends State<EventListPage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  showEventForm(); // Open the form to create a new event
+                  showEventForm();
                 },
                 child: Text('Create New Event'),
               ),
@@ -263,4 +298,3 @@ class _EventListPageState extends State<EventListPage> {
     );
   }
 }
-

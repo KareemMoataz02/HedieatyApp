@@ -7,7 +7,8 @@ import 'gift_list_page.dart';
 import 'add_gift_page.dart';
 import 'my_pledged_gifts_page.dart';
 import 'add_friend.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:firebase_auth/firebase_auth.dart';
+import 'database_helper.dart';
 
 class HomePage extends StatefulWidget {
   final String email; // Property to store email
@@ -19,17 +20,47 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Map<String, dynamic>> friends = [
-    {'name': 'Alice', 'profilePic': 'Assets/female.png', 'events': 1},
-    {'name': 'Bob', 'profilePic': 'Assets/male.png', 'events': 0},
-    {'name': 'Harbor', 'profilePic': 'Assets/male.png', 'events': 2},
-    {'name': 'Jenny', 'profilePic': 'Assets/female.png', 'events': 2},
-    {'name': 'Sam', 'profilePic': 'Assets/male.png', 'events': 2},
-  ];
-
+  List<Map<String, dynamic>> recentFriends = [];
   String searchQuery = '';
+  String username = '';
 
+  @override
+  void initState() {
+    super.initState();
+    _loadUsername(); // Load the username when the page initializes
+    fetchRecentFriends(); // Fetch recent friends from the database
+  }
 
+  // Function to fetch username associated with the email
+  Future<void> _loadUsername() async {
+    final dbHelper = DatabaseHelper();
+    final user = await dbHelper.getUserByEmail(widget.email);
+    setState(() {
+      username = user?['username'] ?? 'User'; // Default 'User' if no username found
+    });
+  }
+
+  // Function to fetch current user ID from the database
+  Future<int> getCurrentUserId() async {
+    final dbHelper = DatabaseHelper();
+    final user = await dbHelper.getUserByEmail(widget.email);
+    return user?['id'] ?? 0; // Return the userId (default to 0 if not found)
+  }
+
+  // Function to load recent friends from the database
+  void fetchRecentFriends() async {
+    int userId = await getCurrentUserId(); // Ensure the correct userId is fetched
+    final dbHelper = DatabaseHelper();
+
+    // Fetch the recent friends from the database
+    final friends = await dbHelper.getRecentFriendsByUserId(userId);
+
+    setState(() {
+      recentFriends = friends;
+    });
+  }
+
+  // Function to handle logout
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false); // Mark as logged out
@@ -44,8 +75,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredFriends = friends.where((friend) {
-      return friend['name'].toLowerCase().contains(searchQuery.toLowerCase());
+    final filteredFriends = recentFriends.where((friend) {
+      return friend['username']
+          .toString()
+          .toLowerCase()
+          .contains(searchQuery.toLowerCase());
     }).toList();
 
     return Scaffold(
@@ -92,12 +126,12 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircleAvatar(
-                    radius:40,
+                    radius: 40,
                     backgroundImage: AssetImage('Assets/logo.jpeg'),
                   ),
                   SizedBox(height: 5),
                   Text(
-                    'Welcome, ${widget.email}', // Display user email
+                    'Welcome, $username', // Display user email
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
@@ -109,7 +143,8 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ProfilePage(email: widget.email)),
+                  MaterialPageRoute(
+                      builder: (context) => ProfilePage(email: widget.email)),
                 );
               },
             ),
@@ -119,7 +154,9 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Your Events')),
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          EventListPage(email: widget.email)),
                 );
               },
             ),
@@ -130,7 +167,10 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GiftListPage(friendName: 'Your Gifts', eventName: 'Your Event Name'),
+                    builder: (context) => GiftListPage(
+                      friendName: 'Your Gifts',
+                      eventName: 'Your Event Name',
+                    ),
                   ),
                 );
               },
@@ -151,7 +191,8 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => MyPledgedGiftsPage()),
+                  MaterialPageRoute(
+                      builder: (context) => MyPledgedGiftsPage()),
                 );
               },
             ),
@@ -161,7 +202,8 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AddFriendPage(email: widget.email)),
+                  MaterialPageRoute(
+                      builder: (context) => AddFriendPage(email: widget.email)),
                 );
               },
             ),
@@ -177,26 +219,22 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
+            child: filteredFriends.isEmpty
+                ? Center(child: CircularProgressIndicator()) // Show loading indicator if no friends
+                : ListView.builder(
               itemCount: filteredFriends.length,
               itemBuilder: (context, index) {
+                final friend = filteredFriends[index];
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundImage: AssetImage(filteredFriends[index]['profilePic']),
+                    backgroundImage: friend['imagePath'] != null
+                        ? AssetImage(friend['imagePath'])
+                        : AssetImage('Assets/default.png'), // Default image if none exists
                   ),
-                  title: Text(filteredFriends[index]['name']),
-                  subtitle: Text(
-                    filteredFriends[index]['events'] > 0
-                        ? 'Upcoming Events: ${filteredFriends[index]['events']}'
-                        : 'No Upcoming Events',
-                  ),
+                  title: Text(friend['username'] ?? 'Unknown Friend'), // Default username
+                  subtitle: Text(friend['email'] ?? 'No Email Available'), // Default email
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EventListPage(friendName: filteredFriends[index]['name']),
-                      ),
-                    );
+                    // Navigate to the friend's event list or profile
                   },
                 );
               },
@@ -208,10 +246,7 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Create Your Own Event/List')),
-                  );
+                  // Navigate to event creation page
                 },
                 child: Text('Create Your Own Event'),
               ),

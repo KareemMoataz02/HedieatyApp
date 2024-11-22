@@ -174,7 +174,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => EventListPage(friendName: 'Your Events'),
+                  builder: (context) => EventListPage(email: widget.email),
                 ),
               );
             },
