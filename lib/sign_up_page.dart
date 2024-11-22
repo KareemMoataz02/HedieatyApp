@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'home_page.dart'; // Navigate to Home Page after Sign-Up
 import 'package:firebase_auth/firebase_auth.dart';
+import 'database_helper.dart';
+import 'login.dart';
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -10,39 +11,91 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
   File? _image;
 
+  /// Picks an image from the gallery
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      debugPrint("Image picker error: $e");
     }
   }
 
+  /// Validates input fields
+  String? _validateFields() {
+    if (_usernameController.text.isEmpty) return "Username is required.";
+    if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
+      return "Enter a valid email.";
+    }
+    if (_passwordController.text.isEmpty || _passwordController.text.length < 6) {
+      return "Password must be at least 6 characters.";
+    }
+    if (_phoneController.text.isEmpty || _phoneController.text.length != 11) {
+      return "Enter a valid phone number.";
+    }
+    return null;
+  }
+
+  /// Handles the sign-up process
   Future<void> _signUp() async {
+    final dbHelper = DatabaseHelper();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    final imagePath = _image?.path ?? '';
+
+    final validationError = _validateFields();
+    if (validationError != null) {
+      _showAlertDialog("Validation Error", validationError);
+      return;
+    }
+
+    // Check if user exists in the database
+    final existingUser = await dbHelper.getUserByEmailOrPhone(email, phone);
+    if (existingUser != null) {
+      _showAlertDialog("Error", "Email or phone number already in use.");
+      return;
+    }
+
     try {
-      // Sign up using Firebase Authentication
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      // Firebase Authentication
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
 
-      // Update user profile with additional details
-      await userCredential.user?.updateDisplayName(_usernameController.text.trim());
+      final user = userCredential.user;
+      if (user == null) {
+        throw Exception("Failed to create user.");
+      }
 
-      // Navigate to HomePage after successful sign-up
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+      await user.updateDisplayName(username);
+
+      // Insert user into the local database
+      await dbHelper.insertUser({
+        'username': username,
+        'email': email,
+        'password': password,
+        'phone': phone,
+        'imagePath': imagePath,
+      });
+
+      await user.sendEmailVerification();
+      _showAlertDialog(
+        "Success",
+        "A verification email has been sent to $email. Please verify before logging in.",
+        isSuccess: true,
       );
     } on FirebaseAuthException catch (e) {
       String errorMessage;
@@ -50,45 +103,54 @@ class _SignUpPageState extends State<SignUpPage> {
         errorMessage = 'This email is already in use.';
       } else if (e.code == 'weak-password') {
         errorMessage = 'The password is too weak.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is not valid.';
       } else {
         errorMessage = 'An error occurred. Please try again.';
       }
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Sign Up Error'),
-          content: Text(errorMessage),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
-      );
+      _showAlertDialog("Sign Up Error", errorMessage);
+    } catch (e) {
+      _showAlertDialog("Error", "An unexpected error occurred: $e");
     }
+  }
+
+  /// Shows an alert dialog
+  Future<void> _showAlertDialog(String title, String message, {bool isSuccess = false}) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (isSuccess) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+              }
+            },
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Sign Up'),
-      ),
+      appBar: AppBar(title: Text('Sign Up')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             GestureDetector(
-              onTap: _pickImage, // Trigger image picker
+              onTap: _pickImage,
               child: CircleAvatar(
                 radius: 50,
                 backgroundImage: _image != null ? FileImage(_image!) : null,
-                child: _image == null
-                    ? Icon(Icons.add_a_photo, size: 50)
-                    : null, // Show an icon if no image is selected
+                child: _image == null ? Icon(Icons.add_a_photo, size: 50) : null,
               ),
             ),
             SizedBox(height: 20),
@@ -108,6 +170,7 @@ class _SignUpPageState extends State<SignUpPage> {
             TextField(
               controller: _phoneController,
               decoration: InputDecoration(labelText: 'Phone'),
+              keyboardType: TextInputType.phone,
             ),
             SizedBox(height: 20),
             ElevatedButton(

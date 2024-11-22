@@ -10,6 +10,10 @@ import 'add_friend.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 
 class HomePage extends StatefulWidget {
+  final String email; // Property to store email
+
+  HomePage({required this.email}); // Constructor to accept email
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -25,16 +29,13 @@ class _HomePageState extends State<HomePage> {
 
   String searchQuery = '';
 
-  // Method to log out and update shared preferences
+
   Future<void> _logout() async {
-    // Update SharedPreferences to set isLoggedIn to false
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false); // Mark as logged out
 
-    // Sign out of Firebase (if used)
-    await FirebaseAuth.instance.signOut();
+    await FirebaseAuth.instance.signOut(); // Firebase logout
 
-    // Navigate back to the Login Page after logging out
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
@@ -43,7 +44,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter friends based on the search query
     final filteredFriends = friends.where((friend) {
       return friend['name'].toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
@@ -56,7 +56,7 @@ class _HomePageState extends State<HomePage> {
             return IconButton(
               icon: Icon(Icons.menu),
               onPressed: () {
-                Scaffold.of(context).openDrawer(); // Open the drawer
+                Scaffold.of(context).openDrawer();
               },
             );
           },
@@ -91,10 +91,14 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 10),
                   CircleAvatar(
-                    radius: 50,
+                    radius:40,
                     backgroundImage: AssetImage('Assets/logo.jpeg'),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    'Welcome, ${widget.email}', // Display user email
+                    style: TextStyle(color: Colors.white),
                   ),
                 ],
               ),
@@ -105,7 +109,7 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ProfilePage()),
+                  MaterialPageRoute(builder: (context) => ProfilePage(email: widget.email)),
                 );
               },
             ),
@@ -153,20 +157,19 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: Icon(Icons.person_add),
-              title: Text('Add a friend'),
+              title: Text('Add a Friend'),
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AddFriendPage()),
+                  MaterialPageRoute(builder: (context) => AddFriendPage(email: widget.email)),
                 );
               },
             ),
             Divider(),
-            // Logout Option
             ListTile(
               leading: Icon(Icons.exit_to_app),
               title: Text('Logout'),
-              onTap: _logout, // Call the logout method
+              onTap: _logout,
             ),
           ],
         ),
@@ -188,7 +191,6 @@ class _HomePageState extends State<HomePage> {
                         : 'No Upcoming Events',
                   ),
                   onTap: () {
-                    // Navigate to Event List Page
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -206,7 +208,6 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to Create Event/List Page
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => EventListPage(friendName: 'Create Your Own Event/List')),

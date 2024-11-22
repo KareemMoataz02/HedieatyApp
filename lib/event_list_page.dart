@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'database_helper.dart'; // Assume you have a DatabaseHelper for CRUD operations
 import 'gift_list_page.dart'; // Import GiftListPage
+import 'package:intl/intl.dart';
 
 class EventListPage extends StatefulWidget {
   final String friendName;
@@ -11,31 +13,25 @@ class EventListPage extends StatefulWidget {
 }
 
 class _EventListPageState extends State<EventListPage> {
-  // Ensure the list contains strictly Map<String, dynamic>
-  List<Map<String, dynamic>> events = [
-    {
-      'name': 'Birthday Party',
-      'category': 'Birthday',
-      'status': 'Upcoming',
-      'deadline': DateTime.now().add(Duration(days: 7)), // Example deadline
-    },
-    {
-      'name': 'Wedding',
-      'category': 'Wedding',
-      'status': 'Current',
-      'deadline': DateTime.now().add(Duration(days: 14)), // Example deadline
-    },
-    {
-      'name': 'Graduation',
-      'category': 'Graduation',
-      'status': 'Past',
-      'deadline': DateTime.now().subtract(Duration(days: 1)), // Example deadline
-    },
-  ];
-
+  List<Map<String, dynamic>> events = []; // Empty list initially
   String sortBy = 'name'; // Default sorting criteria
 
-  // Sort Events based on the selected criteria
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  // Load events from the database
+  Future<void> _loadEvents() async {
+    final dbHelper = DatabaseHelper();
+    final eventList = await dbHelper.getAllEvents(); // Get all events from DB
+    setState(() {
+      events = eventList;
+    });
+  }
+
+  // Sort events based on selected criteria
   void sortEvents() {
     setState(() {
       if (sortBy == 'name') {
@@ -48,7 +44,7 @@ class _EventListPageState extends State<EventListPage> {
     });
   }
 
-  // Function to add or edit an event with a form
+  // Function to create or edit an event
   void showEventForm({int? index}) {
     final isEditing = index != null;
     final event = isEditing
@@ -57,14 +53,14 @@ class _EventListPageState extends State<EventListPage> {
       'name': '',
       'category': '',
       'status': '',
-      'deadline': DateTime.now(), // Initialize with current date
+      'deadline': DateTime.now(), // Default deadline is current date
     };
 
     final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: event['name']);
     final categoryController = TextEditingController(text: event['category']);
     final statusController = TextEditingController(text: event['status']);
-    DateTime deadline = event['deadline'] ?? DateTime.now(); // Use DateTime for the deadline
+    DateTime deadline = event['deadline'] ?? DateTime.now(); // Default deadline
 
     showDialog(
       context: context,
@@ -118,7 +114,7 @@ class _EventListPageState extends State<EventListPage> {
                   },
                 ),
                 SizedBox(height: 16),
-                Text('Deadline: ${deadline.toLocal()}'.split(' ')[0]),
+                Text('Deadline: ${DateFormat('yyyy-mm-dd').format(deadline)}'),
                 ElevatedButton(
                   onPressed: () async {
                     final DateTime? picked = await showDatePicker(
@@ -147,25 +143,23 @@ class _EventListPageState extends State<EventListPage> {
             ),
             TextButton(
               child: Text(isEditing ? 'Save' : 'Add'),
-              onPressed: () {
+              onPressed: () async {
                 if (_formKey.currentState!.validate()) {
-                  setState(() {
-                    if (isEditing) {
-                      events[index!] = {
-                        'name': nameController.text,
-                        'category': categoryController.text,
-                        'status': statusController.text,
-                        'deadline': deadline,
-                      };
-                    } else {
-                      events.add({
-                        'name': nameController.text,
-                        'category': categoryController.text,
-                        'status': statusController.text,
-                        'deadline': deadline,
-                      });
-                    }
-                  });
+                  final dbHelper = DatabaseHelper();
+                  final newEvent = {
+                    'name': nameController.text,
+                    'category': categoryController.text,
+                    'status': statusController.text,
+                    'deadline': deadline.toIso8601String(), // Save the deadline as string
+                  };
+
+                  if (isEditing) {
+                    await dbHelper.updateEvent(event['id'], newEvent); // Update event in DB
+                  } else {
+                    await dbHelper.insertEvent(newEvent); // Insert new event into DB
+                  }
+
+                  _loadEvents(); // Refresh the event list after add/edit
                   Navigator.of(context).pop();
                 }
               },
@@ -177,9 +171,11 @@ class _EventListPageState extends State<EventListPage> {
   }
 
   // Function to delete an event
-  void deleteEvent(int index) {
+  void deleteEvent(int index) async {
+    final dbHelper = DatabaseHelper();
+    await dbHelper.deleteEvent(events[index]['id']); // Delete event from DB
     setState(() {
-      events.removeAt(index); // Remove the event from the list
+      events.removeAt(index); // Remove event from the list
     });
   }
 
@@ -215,8 +211,9 @@ class _EventListPageState extends State<EventListPage> {
                 return ListTile(
                   title: Text(events[index]['name']!),
                   subtitle: Text(
-                    '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ? events[index]['deadline'].toLocal() : 'N/A'}'.split(' ')[0],
-                  ),
+                    '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ?
+                    DateFormat('yyyy-MM-dd').format(DateTime.tryParse(events[index]['deadline']) ?? DateTime.now()) : 'N/A'}',
+                ),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -255,7 +252,7 @@ class _EventListPageState extends State<EventListPage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  showEventForm();
+                  showEventForm(); // Open the form to create a new event
                 },
                 child: Text('Create New Event'),
               ),
@@ -266,3 +263,4 @@ class _EventListPageState extends State<EventListPage> {
     );
   }
 }
+

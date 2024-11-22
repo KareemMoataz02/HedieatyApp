@@ -36,9 +36,12 @@ class LoginPage extends StatelessWidget {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
 
+      // Navigate to HomePage and pass the email
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(
+          builder: (context) => HomePage(email: _emailController.text.trim()),
+        ),
       );
     } on FirebaseAuthException catch (e) {
       String errorMessage;
@@ -55,6 +58,57 @@ class LoginPage extends StatelessWidget {
         builder: (context) => AlertDialog(
           title: Text('Login Error'),
           content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _resetPassword(BuildContext context) async {
+    if (_emailController.text.trim().isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Validation Error'),
+          content: Text('Please enter your email to reset your password.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text.trim());
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Password Reset'),
+          content: Text('Password reset email sent. Please check your inbox.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to send password reset email. Please try again.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -104,6 +158,10 @@ class LoginPage extends StatelessWidget {
                 );
               },
               child: Text('Don\'t have an account? Sign Up'),
+            ),
+            TextButton(
+              onPressed: () => _resetPassword(context),
+              child: Text('Forgot Password?'),
             ),
           ],
         ),

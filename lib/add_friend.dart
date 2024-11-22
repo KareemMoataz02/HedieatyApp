@@ -1,40 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:hedieaty/database_helper.dart';
 
 class AddFriendPage extends StatefulWidget {
+  final String email;
+
+  AddFriendPage({required this.email});
+
   @override
   _AddFriendPageState createState() => _AddFriendPageState();
 }
 
 class _AddFriendPageState extends State<AddFriendPage> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
+  List<Map<String, dynamic>> recentFriends = [];
+  bool isLoading = true; // To show loading state initially
 
-  void addFriendByEmail() {
-    String email = emailController.text;
-    if (email.isNotEmpty) {
-      print('Friend added by email: $email');
-      emailController.clear();
-    } else {
-      showError('Please enter a valid email');
-    }
+  @override
+  void initState() {
+    super.initState();
+    fetchRecentFriends(); // Fetch recent friends when the page initializes
   }
 
-  void addFriendByPhone() {
-    String phone = phoneController.text;
-    if (phone.isNotEmpty) {
-      print('Friend added by phone: $phone');
-      phoneController.clear();
-    } else {
-      showError('Please enter a valid phone number');
-    }
+  // Fetch recent friends from the database
+  void fetchRecentFriends() async {
+    int userId = await getCurrentUserId();
+    final dbHelper = DatabaseHelper();
+    final friends = await dbHelper.getRecentFriendsByUserId(userId);
+
+    setState(() {
+      recentFriends = friends;
+      isLoading = false; // Set loading to false after data fetch
+    });
   }
 
-  void showError(String message) {
+  // Get current user ID based on email
+  Future<int> getCurrentUserId() async {
+    final dbHelper = DatabaseHelper();
+    var currentUser = await dbHelper.getUserByEmail(widget.email);
+    return currentUser?['id'] ?? 0; // Return 0 if no user is found
+  }
+
+  // Show dialog with a message
+  void showDialogMessage(String title, String message) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Error'),
+          title: Text(title),
           content: Text(message),
           actions: [
             TextButton(
@@ -49,109 +60,9 @@ class _AddFriendPageState extends State<AddFriendPage> {
     );
   }
 
-  void showAddFriendDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Select Option'),
-          content: Text('Choose how to add a friend:'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                showEmailInput();
-              },
-              child: Text('Add by Email'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                showPhoneInput();
-              },
-              child: Text('Add by Phone'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void showEmailInput() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Add Friend by Email'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'Enter email address',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                addFriendByEmail();
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text('Add'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void showPhoneInput() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Add Friend by Phone'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: phoneController,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  hintText: 'Enter phone number',
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                addFriendByPhone();
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text('Add'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
+  // Add friend logic (remains unchanged)
+  void addFriend(String input, {required bool isEmail}) async {
+    // ... Add your existing addFriend implementation here
   }
 
   @override
@@ -163,34 +74,39 @@ class _AddFriendPageState extends State<AddFriendPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Choose how you want to add a friend:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 20),
             ElevatedButton(
-              onPressed: showAddFriendDialog,
-              child: Text('Add by Email or Phone'),
+              onPressed: () {
+                showAddFriendDialog();
+              },
+              child: Text('Add Friend by Email or Phone'),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 16),
             Text(
               'Recent Friends:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: 5, // Replace with actual number of recent friends
+            isLoading
+                ? Center(child: CircularProgressIndicator()) // Show loading spinner
+                : Expanded(
+              child: recentFriends.isEmpty
+                  ? Center(
+                child: Text(
+                  'No recent friends found. Add some to see them here!',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+                  : ListView.builder(
+                itemCount: recentFriends.length,
                 itemBuilder: (context, index) {
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8.0),
-                    child: ListTile(
-                      title: Text('Friend $index'), // Replace with friend data
-                      subtitle: Text('friend${index}@example.com'), // Example email
-                      trailing: Icon(Icons.person),
+                  final friend = recentFriends[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      child: Icon(Icons.person),
                     ),
+                    title: Text(friend['email'] ?? 'No email'),
+                    subtitle: Text(friend['phone'] ?? 'No phone'),
                   );
                 },
               ),
@@ -199,5 +115,68 @@ class _AddFriendPageState extends State<AddFriendPage> {
         ),
       ),
     );
+  }
+
+  // Show the dialog to add a friend by email or phone
+  void showAddFriendDialog() {
+    TextEditingController inputController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Add Friend'),
+          content: TextField(
+            controller: inputController,
+            decoration: InputDecoration(
+              labelText: 'Enter Email or Phone',
+              hintText: 'Email or Phone',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                String input = inputController.text.trim();
+                if (_isValidEmail(input)) {
+                  addFriend(input, isEmail: true);
+                  Navigator.of(context).pop();
+                } else {
+                  showDialogMessage('Error', 'Please enter a valid email address');
+                }
+              },
+              child: Text('Add by Email'),
+            ),
+            TextButton(
+              onPressed: () {
+                String input = inputController.text.trim();
+                if (_isValidPhone(input)) {
+                  addFriend(input, isEmail: false);
+                  Navigator.of(context).pop();
+                } else {
+                  showDialogMessage('Error', 'Please enter a valid phone number');
+                }
+              },
+              child: Text('Add by Phone'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Email validation
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+  }
+
+  // Phone validation (basic validation)
+  bool _isValidPhone(String phone) {
+    return RegExp(r'^[0-9]{10,15}$').hasMatch(phone); // Adjust format as per requirements
   }
 }

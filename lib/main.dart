@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login.dart';
-import 'home_page.dart'; // Import the home page for navigation after login
+import 'home_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 Future<void> main() async {
@@ -17,6 +17,7 @@ class HedieatyApp extends StatefulWidget {
 
 class _HedieatyAppState extends State<HedieatyApp> {
   bool _isLoggedIn = false;
+  String? _email;
 
   @override
   void initState() {
@@ -27,29 +28,31 @@ class _HedieatyAppState extends State<HedieatyApp> {
   Future<void> _checkLoginStatus() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      // Use ?? operator to handle null gracefully
       bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      String? email = prefs.getString('email');
 
       setState(() {
         _isLoggedIn = isLoggedIn;
+        _email = email;
       });
     } catch (e) {
-      // Log the error or handle it
       debugPrint("Error reading SharedPreferences: $e");
       setState(() {
-        _isLoggedIn = false; // Default to logged-out state
+        _isLoggedIn = false;
+        _email = null;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('IsLoggedIn: $_isLoggedIn, Email: $_email');
     return MaterialApp(
       title: 'Hedieaty',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: _isLoggedIn ? HomePage() : LoginPage(), // Navigate based on login status
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: _isLoggedIn && _email != null
+          ? HomePage(email: _email ?? "Guest") // Fallback for null
+          : LoginPage(),
     );
   }
 }
