@@ -160,31 +160,32 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.card_giftcard),
-              title: Text('Gift List'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GiftListPage(
-                      friendName: 'Your Gifts',
-                      eventName: 'Your Event Name',
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.add),
-              title: Text('Create New Gift'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddGiftPage()),
-                );
-              },
-            ),
+            // ListTile(
+            //   leading: Icon(Icons.card_giftcard),
+            //   title: Text('Gift List'),
+            //   onTap: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => GiftListPage(
+            //           friendEmail: widget.email, // Friend's email or user email
+            //           eventName: event['name'],  // Event name
+            //           eventId: event['id'],      // Pass the event ID to fetch related gifts
+            //         ),
+            //       ),
+            //     );
+            //   },
+            // ),
+            // ListTile(
+            //   leading: Icon(Icons.add),
+            //   title: Text('Create New Gift'),
+            //   onTap: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => AddGiftPage(eventId: null,)),
+            //     );
+            //   },
+            // ),
             ListTile(
               leading: Icon(Icons.thumb_up),
               title: Text('My Pledged Gifts'),
@@ -192,7 +193,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => MyPledgedGiftsPage()),
+                      builder: (context) => MyPledgedGiftsPage(email: widget.email)),
                 );
               },
             ),
@@ -234,7 +235,11 @@ class _HomePageState extends State<HomePage> {
                   title: Text(friend['username'] ?? 'Unknown Friend'), // Default username
                   subtitle: Text(friend['email'] ?? 'No Email Available'), // Default email
                   onTap: () {
-                    // Navigate to the friend's event list or profile
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ProfilePage(email: friend['email']),
+                    ));
                   },
                 );
               },

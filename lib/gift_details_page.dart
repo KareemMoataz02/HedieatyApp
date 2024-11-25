@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class GiftDetailsPage extends StatelessWidget {
-  final Map<String, String> gift;
+  final Map<String, dynamic> gift;
 
   GiftDetailsPage({required this.gift});
 
@@ -11,53 +11,84 @@ class GiftDetailsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(gift['name'] ?? 'Gift Details'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center, // Center align the children
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Centered CircleAvatar for the gift icon
+            // Gift image or placeholder
             Center(
               child: CircleAvatar(
-                radius: 100, // Increased size for a larger avatar
-                backgroundImage: AssetImage('Assets/gift.jpg'), // Update the image path as needed
-                backgroundColor: Colors.grey[200], // Fallback color
+                radius: 80,
+                backgroundImage: gift['image'] != null
+                    ? NetworkImage(gift['image']) // Load from URL
+                    : AssetImage('assets/gift.jpg') as ImageProvider, // Default image
+                backgroundColor: Colors.grey[200],
               ),
             ),
-            SizedBox(height: 16), // Space between avatar and text
+            SizedBox(height: 16),
 
             // Gift details
-            Text(
-              'Name: ${gift['name'] ?? 'N/A'}',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Divider(), // Divider for better separation
+            _detailText('Name', gift['name']),
+            _detailDivider(),
+            _detailText('Category', gift['category']),
+            _detailDivider(),
+            _detailText('Status', gift['status']),
+            _detailDivider(),
+            _detailText('Price', gift['price'] != null ? '\$${gift['price']}' : 'N/A'),
+            _detailDivider(),
 
-            Text(
-              'Category: ${gift['category'] ?? 'N/A'}',
-              style: TextStyle(fontSize: 18),
-            ),
-            Divider(), // Divider for better separation
 
-            Text(
-              'Status: ${gift['status'] ?? 'N/A'}',
-              style: TextStyle(fontSize: 18),
-            ),
-            Divider(), // Divider for better separation
-
-            Text(
-              'Price: \$${gift['price'] ?? 'N/A'}',
-              style: TextStyle(fontSize: 18),
-            ),
-            Divider(), // Divider for better separation
-
-            Text(
-              'Event: ${gift['event'] ?? 'N/A'}',
-              style: TextStyle(fontSize: 18),
-            ),
+            // Optional description
+            if (gift['description'] != null && gift['description'].isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Description',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      gift['description'],
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  // Helper method to display detail text
+  Widget _detailText(String label, String? value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        Expanded(
+          child: Text(
+            value ?? 'N/A',
+            textAlign: TextAlign.end,
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper method to create a divider
+  Widget _detailDivider() {
+    return Divider(thickness: 1.0, height: 24.0);
   }
 }

@@ -18,62 +18,67 @@ class _EventListPageState extends State<EventListPage> {
   String? selectedCategory;
   String? selectedStatus;
   String username = ''; // To store the user's username
+  bool isLoading = false; // Loading indicator for async operations
 
   @override
   void initState() {
     super.initState();
-    _loadUsername(); // Load the username when the page initializes
+    _loadUsername();
     _loadEvents();
   }
 
-  // Function to fetch username associated with the email
+  // Fetch username associated with the email
   Future<void> _loadUsername() async {
-    final dbHelper = DatabaseHelper();
-    final user = await dbHelper.getUserByEmail(widget.email); // Assuming getUserByEmail fetches the user data
-    setState(() {
-      username = user?['username'] ?? 'User'; // Assign username, or 'User' if not found
-    });
+    setState(() => isLoading = true);
+    try {
+      final dbHelper = DatabaseHelper();
+      final user = await dbHelper.getUserByEmail(widget.email);
+      username = user?['username'] ?? 'User';
+    } catch (e) {
+      print("Error loading username: $e");
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
-  // Function to load events from the database
+  // Load events from the database
   Future<void> _loadEvents() async {
+    setState(() => isLoading = true);
+    try {
+      final dbHelper = DatabaseHelper();
+      events = await dbHelper.getEventsByEmail(widget.email);
+    } catch (e) {
+      print("Error loading events: $e");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  // Update a specific event in the database
+  Future<void> _updateEventInDb(Map<String, dynamic> updatedEvent) async {
     final dbHelper = DatabaseHelper();
-    final eventList = await dbHelper.getEventsByEmail(widget.email);
-    setState(() {
-      events = eventList;
-    });
+    await dbHelper.updateEvent(updatedEvent['id'], updatedEvent);
   }
 
-  // Function to sort events based on selected criterion
-  void sortEvents() {
-    setState(() {
-      if (sortBy == 'name') {
-        events.sort((a, b) => a['name']!.compareTo(b['name']!));
-      } else if (sortBy == 'category') {
-        events.sort((a, b) => a['category']!.compareTo(b['category']!));
-      } else if (sortBy == 'status') {
-        events.sort((a, b) => a['status']!.compareTo(b['status']!));
-      }
-    });
-  }
-
-  // Function to show the event form (both for creating and editing)
-  void showEventForm({int? index}) {
+// Show event form (create or edit)
+  showEventForm({int? index}) {
     final isEditing = index != null;
     final event = isEditing
-        ? events[index!]
+        ? Map<String, dynamic>.from(events[index!]) // Make a mutable copy
         : {
+      'id': null,
       'name': '',
       'category': 'Formal',
       'status': 'Upcoming',
-      'deadline': DateTime.now(),
+      'deadline': DateTime.now().toIso8601String(),
+      'email': widget.email,
     };
 
     final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: event['name']);
     selectedCategory = event['category'];
     selectedStatus = event['status'];
-    DateTime deadline = event['deadline'] ?? DateTime.now();
+    DateTime deadline = DateTime.tryParse(event['deadline']) ?? DateTime.now();
 
     showDialog(
       context: context,
@@ -82,105 +87,62 @@ class _EventListPageState extends State<EventListPage> {
           title: Text(isEditing ? 'Edit Event' : 'Add Event'),
           content: Form(
             key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: InputDecoration(labelText: 'Event Name'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter an event name';
-                    }
-                    return null;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  decoration: InputDecoration(
-                    labelText: 'Category',
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: InputDecoration(labelText: 'Event Name'),
+                    validator: (value) => value == null || value.isEmpty ? 'Please enter an event name' : null,
                   ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'Formal',
-                      child: Text('Formal'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Personal',
-                      child: Text('Personal'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Gathering',
-                      child: Text('Gathering'),
-                    ),
-                  ],
-                  onChanged: (newValue) {
-                    setState(() {
-                      selectedCategory = newValue;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a category';
-                    }
-                    return null;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  value: selectedStatus,
-                  decoration: InputDecoration(labelText: 'Status'),
-                  items: ['Upcoming', 'Current', 'Past'].map((String status) {
-                    return DropdownMenuItem<String>(
-                      value: status,
-                      child: Text(status),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedStatus = newValue;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a status';
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                Text('Deadline: ${DateFormat('yyyy-MM-dd').format(deadline)}'),
-                ElevatedButton(
-                  onPressed: () async {
-                    final DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: deadline,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2101),
-                    );
-                    if (picked != null && picked != deadline) {
-                      setState(() {
-                        deadline = picked;
-                      });
-                    }
-                  },
-                  child: Text('Select Deadline'),
-                ),
-              ],
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(labelText: 'Category'),
+                    items: ['Formal', 'Personal', 'Gathering'].map((String category) {
+                      return DropdownMenuItem(value: category, child: Text(category));
+                    }).toList(),
+                    onChanged: (newValue) => setState(() => selectedCategory = newValue),
+                    validator: (value) => value == null ? 'Please select a category' : null,
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: selectedStatus,
+                    decoration: InputDecoration(labelText: 'Status'),
+                    items: ['Upcoming', 'Current', 'Past'].map((String status) {
+                      return DropdownMenuItem(value: status, child: Text(status));
+                    }).toList(),
+                    onChanged: (newValue) => setState(() => selectedStatus = newValue),
+                    validator: (value) => value == null ? 'Please select a status' : null,
+                  ),
+                  SizedBox(height: 16),
+                  Text('Deadline: ${DateFormat('yyyy-MM-dd').format(deadline)}'),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: deadline,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime(2101),
+                      );
+                      if (picked != null) setState(() => deadline = picked);
+                    },
+                    child: Text('Select Deadline'),
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: <Widget>[
+          actions: [
             TextButton(
               child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
               child: Text(isEditing ? 'Save' : 'Add'),
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
-                  final dbHelper = DatabaseHelper();
-                  final newEvent = {
+                  final updatedEvent = {
+                    'id': event['id'],
                     'name': nameController.text,
                     'category': selectedCategory,
                     'status': selectedStatus,
@@ -189,12 +151,16 @@ class _EventListPageState extends State<EventListPage> {
                   };
 
                   if (isEditing) {
-                    await dbHelper.updateEvent(event['id'], newEvent);
+                    setState(() {
+                      events[index!] = updatedEvent; // Update locally
+                    });
+                    await _updateEventInDb(updatedEvent); // Update in DB
                   } else {
-                    await dbHelper.insertEvent(newEvent);
+                    final dbHelper = DatabaseHelper();
+                    final newId = await dbHelper.insertEvent(updatedEvent);
+                    updatedEvent['id'] = newId;
+                    setState(() => events.add(updatedEvent)); // Add to mutable list
                   }
-
-                  _loadEvents(); // Refresh the event list
                   Navigator.of(context).pop();
                 }
               },
@@ -205,12 +171,38 @@ class _EventListPageState extends State<EventListPage> {
     );
   }
 
-  // Function to delete an event
-  void deleteEvent(int index) async {
+// Delete an event
+  Future<void> deleteEvent(int index) async {
+    if (index < 0 || index >= events.length) {
+      print("Invalid index: $index");
+      return;
+    }
+
     final dbHelper = DatabaseHelper();
-    await dbHelper.deleteEvent(events[index]['id']);
+    try {
+      final eventId = events[index]['id'];
+      await dbHelper.deleteEvent(eventId);
+      setState(() {
+        // Modify the mutable events list
+        events = List.from(events)..removeAt(index);
+      });
+      print("Event with ID $eventId deleted successfully.");
+    } catch (e) {
+      print("Error deleting event: $e");
+    }
+  }
+
+
+  // Sort events based on selected criterion
+  void sortEvents() {
     setState(() {
-      events.removeAt(index);
+      if (sortBy == 'name') {
+        events.sort((a, b) => a['name'].compareTo(b['name']));
+      } else if (sortBy == 'category') {
+        events.sort((a, b) => a['category'].compareTo(b['category']));
+      } else if (sortBy == 'status') {
+        events.sort((a, b) => a['status'].compareTo(b['status']));
+      }
     });
   }
 
@@ -218,62 +210,54 @@ class _EventListPageState extends State<EventListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Events'), // Show the username instead of email
+        title: Text('Events - $username'),
         actions: [
           DropdownButton<String>(
             value: sortBy,
-            onChanged: (String? newValue) {
-              setState(() {
-                sortBy = newValue!;
-                sortEvents();
-              });
-            },
-            items: <String>['name', 'category', 'status']
-                .map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text('Sort by $value'),
-              );
+            onChanged: (newValue) => setState(() {
+              sortBy = newValue!;
+              sortEvents();
+            }),
+            items: ['name', 'category', 'status'].map((value) {
+              return DropdownMenuItem(value: value, child: Text('Sort by $value'));
             }).toList(),
           ),
         ],
       ),
-      body: Column(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Expanded(
             child: ListView.builder(
               itemCount: events.length,
               itemBuilder: (context, index) {
+                final event = events[index];
                 return ListTile(
-                  title: Text(events[index]['name']!),
+                  title: Text(event['name']),
                   subtitle: Text(
-                    '${events[index]['category']} - ${events[index]['status']} - Deadline: ${events[index]['deadline'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.tryParse(events[index]['deadline']) ?? DateTime.now()) : 'N/A'}',
+                    '${event['category']} - ${event['status']} - Deadline: ${DateFormat('yyyy-MM-dd').format(DateTime.parse(event['deadline']))}',
                   ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GiftListPage(
-                          friendName: widget.email,
-                          eventName: events[index]['name']!,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GiftListPage(
+                        friendEmail: widget.email, // Friend's email or user email
+                        eventName: event['name'],  // Event name
+                        eventId: event['id'],      // Pass the event ID to fetch related gifts
                       ),
-                    );
-                  },
+                    ),
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: Icon(Icons.edit),
-                        onPressed: () {
-                          showEventForm(index: index);
-                        },
+                        onPressed: () => showEventForm(index: index),
                       ),
                       IconButton(
                         icon: Icon(Icons.delete),
-                        onPressed: () {
-                          deleteEvent(index);
-                        },
+                        onPressed: () => deleteEvent(index),
                       ),
                     ],
                   ),
@@ -286,9 +270,7 @@ class _EventListPageState extends State<EventListPage> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  showEventForm();
-                },
+                onPressed: () => showEventForm(),
                 child: Text('Create New Event'),
               ),
             ),
