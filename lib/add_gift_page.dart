@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; // Import your DatabaseHelper class
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'database_helper.dart';
 
 class AddGiftPage extends StatefulWidget {
   final int eventId; // Event ID to associate with the gift
@@ -17,12 +19,18 @@ class _AddGiftPageState extends State<AddGiftPage> {
   final TextEditingController priceController = TextEditingController();
 
   String giftStatus = 'Available'; // Default gift status
+  File? selectedImage; // To hold the selected image file
 
-  // Function to upload an image
-  void uploadImage() {
-    // Logic for image upload can be implemented here
-    // This can use packages like image_picker or file_picker
-    print('Upload Image functionality goes here');
+  // Function to pick an image
+  Future<void> uploadImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        selectedImage = File(image.path); // Save the image file
+      });
+    }
   }
 
   // Function to save gift to the database
@@ -43,7 +51,14 @@ class _AddGiftPageState extends State<AddGiftPage> {
     // Convert price to double
     final double priceValue = double.tryParse(price) ?? 0.0;
 
-    // Create a gift object and insert into the database
+    if (selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please upload an image.')),
+      );
+      return;
+    }
+
+    // Save the gift to the database, including the image path
     final dbHelper = DatabaseHelper();
     await dbHelper.insertGift({
       'name': name,
@@ -52,6 +67,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
       'price': priceValue,
       'status': giftStatus,
       'event_id': widget.eventId, // Associate with the current event
+      'image_path': selectedImage!.path, // Save the image file path
     });
 
     // After saving, pop the screen and return to the previous page
@@ -87,7 +103,18 @@ class _AddGiftPageState extends State<AddGiftPage> {
             ),
             SizedBox(height: 16.0),
 
-            // Upload Image Button (Optional, can be implemented later)
+            // Display the selected image
+            if (selectedImage != null)
+              Image.file(
+                selectedImage!,
+                height: 150,
+                width: 150,
+                fit: BoxFit.cover,
+              ),
+
+            SizedBox(height: 16.0),
+
+            // Upload Image Button
             ElevatedButton(
               onPressed: uploadImage, // Call the upload function
               child: Text('Upload Image'),

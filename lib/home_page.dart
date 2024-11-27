@@ -1,10 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hedieaty/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hedieaty/profile_page.dart';
 import 'event_list_page.dart';
-import 'gift_list_page.dart';
-import 'add_gift_page.dart';
 import 'my_pledged_gifts_page.dart';
 import 'add_friend.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> recentFriends = [];
   String searchQuery = '';
   String username = '';
+  late String imagePath ;
 
   @override
   void initState() {
@@ -36,7 +36,8 @@ class _HomePageState extends State<HomePage> {
     final dbHelper = DatabaseHelper();
     final user = await dbHelper.getUserByEmail(widget.email);
     setState(() {
-      username = user?['username'] ?? 'User'; // Default 'User' if no username found
+      username = user?['username'] ?? 'User';
+      imagePath = user?['imagePath'] ?? '';
     });
   }
 
@@ -127,7 +128,9 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundImage: AssetImage('Assets/logo.jpeg'),
+                    backgroundImage: imagePath.isNotEmpty
+                        ? FileImage(File(imagePath)) // Load from file if path is not empty
+                        : AssetImage('assets/default_avatar.png') as ImageProvider, // Fallback to default image
                   ),
                   SizedBox(height: 5),
                   Text(
@@ -145,12 +148,15 @@ class _HomePageState extends State<HomePage> {
                   context,
                   MaterialPageRoute(
                       builder: (context) => ProfilePage(email: widget.email)),
-                );
+                ).then((_) {
+                  // This will run when you return from ProfilePage
+                  _loadUsername();  // Refresh the image and username
+                });
               },
             ),
             ListTile(
               leading: Icon(Icons.event),
-              title: Text('Event List'),
+              title: Text('My Event List'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -160,32 +166,6 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            // ListTile(
-            //   leading: Icon(Icons.card_giftcard),
-            //   title: Text('Gift List'),
-            //   onTap: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => GiftListPage(
-            //           friendEmail: widget.email, // Friend's email or user email
-            //           eventName: event['name'],  // Event name
-            //           eventId: event['id'],      // Pass the event ID to fetch related gifts
-            //         ),
-            //       ),
-            //     );
-            //   },
-            // ),
-            // ListTile(
-            //   leading: Icon(Icons.add),
-            //   title: Text('Create New Gift'),
-            //   onTap: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => AddGiftPage(eventId: null,)),
-            //     );
-            //   },
-            // ),
             ListTile(
               leading: Icon(Icons.thumb_up),
               title: Text('My Pledged Gifts'),
@@ -221,25 +201,49 @@ class _HomePageState extends State<HomePage> {
         children: [
           Expanded(
             child: filteredFriends.isEmpty
-                ? Center(child: CircularProgressIndicator()) // Show loading indicator if no friends
+                ? const Center(child: CircularProgressIndicator()) // Show loading indicator if no friends
                 : ListView.builder(
               itemCount: filteredFriends.length,
               itemBuilder: (context, index) {
                 final friend = filteredFriends[index];
                 return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: friend['imagePath'] != null
-                        ? AssetImage(friend['imagePath'])
-                        : AssetImage('Assets/default.png'), // Default image if none exists
+                  leading: GestureDetector(
+                    onTap: () {
+                      // Navigate to ProfilePage when profile image is tapped
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfilePage(email: friend['email']),
+                        ),
+                      );
+                    },
+                    child: CircleAvatar(
+                      radius: 35, // Larger size for emphasis
+                      backgroundColor: Colors.blueAccent, // Add a bold background for better visibility
+                      child: CircleAvatar(
+                        radius: 30, // Inner circle with smaller radius for border effect
+                        backgroundImage: friend['imagePath'] != null
+                            ? AssetImage(friend['imagePath'])
+                            : AssetImage('Assets/default.png'), // Default image if none exists
+                      ),
+                    ),
                   ),
-                  title: Text(friend['username'] ?? 'Unknown Friend'), // Default username
-                  subtitle: Text(friend['email'] ?? 'No Email Available'), // Default email
+                  title: Text(
+                    friend['username'] ?? 'Unknown Friend',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ), // Bold username
+                  subtitle: Text(
+                    friend['phone'] ?? 'No number available',
+                    style: TextStyle(fontSize: 16),
+                  ), // Subtitle with better font size
                   onTap: () {
+                    // Navigate to EventListPage when the ListTile body is tapped
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => ProfilePage(email: friend['email']),
-                    ));
+                        builder: (context) => EventListPage(email: friend['email']),
+                      ),
+                    );
                   },
                 );
               },
@@ -251,8 +255,9 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to event creation page
-                },
+                  Navigator.push(context,
+                    MaterialPageRoute(
+                        builder: (context) => EventListPage(email: widget.email)),);},
                 child: Text('Create Your Own Event'),
               ),
             ),

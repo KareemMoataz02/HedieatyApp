@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'database_helper.dart'; // Assume you have a DatabaseHelper for CRUD operations
 import 'gift_list_page.dart'; // Import GiftListPage
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class EventListPage extends StatefulWidget {
   final String email;
@@ -19,12 +21,26 @@ class _EventListPageState extends State<EventListPage> {
   String? selectedStatus;
   String username = ''; // To store the user's username
   bool isLoading = false; // Loading indicator for async operations
+  bool isOwner = false;  // This will store whether the logged-in user is the owner
+
 
   @override
   void initState() {
     super.initState();
     _loadUsername();
     _loadEvents();
+    _checkOwnership();
+  }
+
+  // Check if the logged-in user is the owner of the event
+  Future<void> _checkOwnership() async {
+    final prefs = await SharedPreferences.getInstance();
+    final loggedInEmail = prefs.getString('email');  // Get logged-in user's email
+    if (loggedInEmail != null && loggedInEmail == widget.email) {
+      setState(() {
+        isOwner = true;
+      });
+    }
   }
 
   // Fetch username associated with the email
@@ -152,7 +168,7 @@ class _EventListPageState extends State<EventListPage> {
 
                   if (isEditing) {
                     setState(() {
-                      events[index!] = updatedEvent; // Update locally
+                      events[index] = updatedEvent; // Update locally
                     });
                     await _updateEventInDb(updatedEvent); // Update in DB
                   } else {
@@ -251,11 +267,13 @@ class _EventListPageState extends State<EventListPage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
+                      if (isOwner)
+                        IconButton(
                         icon: Icon(Icons.edit),
                         onPressed: () => showEventForm(index: index),
                       ),
-                      IconButton(
+                      if (isOwner)
+                        IconButton(
                         icon: Icon(Icons.delete),
                         onPressed: () => deleteEvent(index),
                       ),
@@ -265,6 +283,7 @@ class _EventListPageState extends State<EventListPage> {
               },
             ),
           ),
+          if (isOwner)
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SizedBox(

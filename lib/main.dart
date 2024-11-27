@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'login.dart';
 import 'home_page.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,49 +11,45 @@ Future<void> main() async {
   runApp(HedieatyApp());
 }
 
-class HedieatyApp extends StatefulWidget {
-  @override
-  _HedieatyAppState createState() => _HedieatyAppState();
-}
-
-class _HedieatyAppState extends State<HedieatyApp> {
-  bool _isLoggedIn = false;
-  String? _email;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLoginStatus();
-  }
-
-  Future<void> _checkLoginStatus() async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      String? email = prefs.getString('email');
-
-      setState(() {
-        _isLoggedIn = isLoggedIn;
-        _email = email;
-      });
-    } catch (e) {
-      debugPrint("Error reading SharedPreferences: $e");
-      setState(() {
-        _isLoggedIn = false;
-        _email = null;
-      });
-    }
-  }
-
+class HedieatyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    debugPrint('IsLoggedIn: $_isLoggedIn, Email: $_email');
     return MaterialApp(
       title: 'Hedieaty',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: _isLoggedIn && _email != null
-          ? HomePage(email: _email ?? "Guest") // Fallback for null
-          : LoginPage(),
+      home: AppState(),
     );
+  }
+}
+
+class AppState extends HookWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isLoggedIn = useState(false);  // Hook to track login state
+    final email = useState<String?>(null);  // Hook to track email
+
+    Future<void> checkLoginStatus(ValueNotifier<bool> isLoggedIn, ValueNotifier<String?> email) async {
+      try {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        bool loginStatus = prefs.getBool('isLoggedIn') ?? false;
+        String? userEmail = prefs.getString('email');
+
+        isLoggedIn.value = loginStatus;
+        email.value = userEmail;
+      } catch (e) {
+        debugPrint("Error reading SharedPreferences: $e");
+        isLoggedIn.value = false;
+        email.value = null;
+      }
+    }
+
+    useEffect(() {
+      checkLoginStatus(isLoggedIn, email);  // Call function to check login status
+      return null;
+    }, []);
+
+    return isLoggedIn.value && email.value != null
+        ? HomePage(email: email.value!) // Go to HomePage if logged in
+        : LoginPage(); // Go to LoginPage if not logged in
   }
 }

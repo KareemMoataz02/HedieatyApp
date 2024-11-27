@@ -35,6 +35,7 @@ class LoginPage extends StatelessWidget {
       // Save login state in shared preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('email', _emailController.text.trim());
 
       // Navigate to HomePage and pass the email
       Navigator.pushReplacement(

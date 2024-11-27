@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 class GiftDetailsPage extends StatelessWidget {
@@ -20,8 +22,8 @@ class GiftDetailsPage extends StatelessWidget {
             Center(
               child: CircleAvatar(
                 radius: 80,
-                backgroundImage: gift['image'] != null
-                    ? NetworkImage(gift['image']) // Load from URL
+                backgroundImage: gift['image_path'] != null
+                    ? FileImage(File(gift['image_path'])) // Load from URL
                     : AssetImage('assets/gift.jpg') as ImageProvider, // Default image
                 backgroundColor: Colors.grey[200],
               ),
@@ -54,9 +56,13 @@ class GiftDetailsPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 8),
-                    Text(
-                      gift['description'],
-                      style: TextStyle(fontSize: 16),
+                    // Center the description text
+                    Center(
+                      child: Text(
+                        gift['description'],
+                        style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center, // Ensures text is centered
+                      ),
                     ),
                   ],
                 ),
@@ -80,7 +86,7 @@ class GiftDetailsPage extends StatelessWidget {
           child: Text(
             value ?? 'N/A',
             textAlign: TextAlign.end,
-            style: TextStyle(fontSize: 18),
+            style: TextStyle(fontSize: 20),
           ),
         ),
       ],

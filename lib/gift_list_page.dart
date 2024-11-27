@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'add_gift_page.dart';
 import 'gift_details_page.dart';
 import 'database_helper.dart';
@@ -22,12 +26,14 @@ class _GiftListPageState extends State<GiftListPage> {
   List<Map<String, dynamic>> gifts = [];
   String sortBy = 'name';
   bool isLoading = false;
+  bool isOwner = false; // This will store whether the logged-in user is the owner
   final dbHelper = DatabaseHelper();
 
   @override
   void initState() {
     super.initState();
     _loadGifts();
+    _checkOwnership(); // Check if the user is the owner
   }
 
   // Load gifts from the database for the given event
@@ -38,13 +44,26 @@ class _GiftListPageState extends State<GiftListPage> {
     try {
       final giftList = await dbHelper.getGiftsByEventId(widget.eventId);
       setState(() {
-        gifts = giftList.map((gift) => Map<String, dynamic>.from(gift)).toList();
+        gifts =
+            giftList.map((gift) => Map<String, dynamic>.from(gift)).toList();
       });
     } catch (e) {
       print("Error loading gifts: $e");
     } finally {
       setState(() {
         isLoading = false;
+      });
+    }
+  }
+
+  // Check if the logged-in user is the owner of the event
+  Future<void> _checkOwnership() async {
+    final prefs = await SharedPreferences.getInstance();
+    final loggedInEmail = prefs.getString(
+        'email'); // Get logged-in user's email
+    if (loggedInEmail != null && loggedInEmail == widget.friendEmail) {
+      setState(() {
+        isOwner = true;
       });
     }
   }
@@ -104,7 +123,8 @@ class _GiftListPageState extends State<GiftListPage> {
     try {
       await dbHelper.updateGift(updatedGift);
       setState(() {
-        final index = gifts.indexWhere((gift) => gift['id'] == updatedGift['id']);
+        final index = gifts.indexWhere((gift) =>
+        gift['id'] == updatedGift['id']);
         if (index != -1) {
           gifts[index] = updatedGift;
         }
@@ -113,6 +133,44 @@ class _GiftListPageState extends State<GiftListPage> {
       print("Error editing gift: $e");
     }
   }
+
+  // Delete an event
+  Future<void> deleteGift(int index) async {
+    if (index < 0 || index >= gifts.length) {
+      print("Invalid index: $index");
+      return;
+    }
+
+    final dbHelper = DatabaseHelper();
+    try {
+      final giftId = gifts[index]['id']; // Fetch the gift ID
+
+      // Check if the gift has any pledges before allowing deletion
+      final pledgedGifts = await dbHelper.getPledgedGiftsByUser(
+          gifts[index]['userEmail']);
+
+      if (pledgedGifts.isNotEmpty) {
+        print(
+            "Gift with ID $giftId cannot be deleted because it has been pledged.");
+        return; // Prevent deletion if the gift has pledges
+      }
+
+      // Proceed with deletion if no pledges are found
+      final rowsAffected = await dbHelper.deleteGift(giftId);
+
+      if (rowsAffected > 0) {
+        setState(() {
+          gifts.removeAt(index); // Remove from the list
+        });
+        print("Gift with ID $giftId deleted successfully.");
+      } else {
+        print("No gift found with ID $giftId.");
+      }
+    } catch (e) {
+      print("Error deleting gift: $e");
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -148,39 +206,52 @@ class _GiftListPageState extends State<GiftListPage> {
               itemBuilder: (context, index) {
                 return ListTile(
                   title: Text(gifts[index]['name']),
-                  subtitle: Text('${gifts[index]['category']} - ${gifts[index]['status']}'),
+                  subtitle: Text(
+                      '${gifts[index]['category']} - ${gifts[index]['status']}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       AnimatedSwitcher(
                         duration: Duration(milliseconds: 300),
                         transitionBuilder: (child, animation) {
-                          return ScaleTransition(scale: animation, child: child);
+                          return ScaleTransition(
+                              scale: animation, child: child);
                         },
                         child: IconButton(
                           key: ValueKey(gifts[index]['status']),
                           icon: Icon(
-                            gifts[index]['status'] == 'Pledged' ? Icons.thumb_down : Icons.thumb_up,
-                            color: gifts[index]['status'] == 'Pledged' ? Colors.red : Colors.green,
+                            gifts[index]['status'] == 'Pledged' ? Icons
+                                .thumb_down : Icons.thumb_up,
+                            color: gifts[index]['status'] == 'Pledged' ? Colors
+                                .red : Colors.green,
                           ),
                           onPressed: () {
-                            togglePledge(index);
+                            if (!isOwner)
+                              togglePledge(index);
                           },
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () {
-                          _showEditDialog(context, gifts[index]);
-                        },
-                      ),
+                      // Show Edit button only if the logged-in user is the owner
+                      if (isOwner)
+                        IconButton(
+                          icon: Icon(Icons.edit),
+                          onPressed: () {
+                            _showEditDialog(context, gifts[index]);
+                          },
+                        ),
+                      if (isOwner)
+                        IconButton(
+                            icon: Icon(Icons.delete),
+                            onPressed: () => deleteGift(index)
+                        ),
                       IconButton(
                         icon: Icon(Icons.info),
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => GiftDetailsPage(gift: gifts[index]),
+                              builder: (context) =>
+                                  GiftDetailsPage(gift: gifts[index]),
                             ),
                           );
                         },
@@ -191,35 +262,37 @@ class _GiftListPageState extends State<GiftListPage> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddGiftPage(eventId: widget.eventId),
-                    ),
-                  ).then((_) {
-                    _loadGifts();
-                  });
-                },
-                child: Text('Create New Gift'),
+          if (isOwner)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AddGiftPage(eventId: widget.eventId),
+                      ),
+                    ).then((_) {
+                      _loadGifts();
+                    });
+                  },
+                  child: const Text('Create New Gift'),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  // Show a dialog to edit the gift details
+// Show a dialog to edit the gift details
   void _showEditDialog(BuildContext context, Map<String, dynamic> gift) {
     if (gift['status'] != 'Available') {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Cannot edit this gift as it is already pledged.'),
           duration: Duration(seconds: 3),
         ),
@@ -227,9 +300,26 @@ class _GiftListPageState extends State<GiftListPage> {
       return;
     }
 
-    final TextEditingController nameController = TextEditingController(text: gift['name']);
-    final TextEditingController categoryController = TextEditingController(text: gift['category']);
-    final TextEditingController priceController = TextEditingController(text: gift['price'].toString());
+    final TextEditingController nameController = TextEditingController(
+        text: gift['name']);
+    final TextEditingController categoryController = TextEditingController(
+        text: gift['category']);
+    final TextEditingController priceController = TextEditingController(
+        text: gift['price'].toString());
+    String imagePath = gift['imagePath'] ??
+        ''; // Default image path if no image exists.
+
+    // Function to pick an image from the gallery or camera
+    Future<void> _pickImage() async {
+      final picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(source: ImageSource
+          .gallery); // You can change to ImageSource.camera for using camera.
+
+      if (pickedFile != null) {
+        imagePath = pickedFile
+            .path; // Update the image path with the new image selected.
+      }
+    }
 
     showDialog(
       context: context,
@@ -239,6 +329,13 @@ class _GiftListPageState extends State<GiftListPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Option to pick a new image
+              ElevatedButton(
+                onPressed: _pickImage,
+                child: Text('Change Image'),
+              ),
+
+              // Gift details fields
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(labelText: 'Name'),
@@ -265,9 +362,12 @@ class _GiftListPageState extends State<GiftListPage> {
                   ...gift,
                   'name': nameController.text,
                   'category': categoryController.text,
-                  'price': double.tryParse(priceController.text) ?? gift['price'],
+                  'price': double.tryParse(priceController.text) ??
+                      gift['price'],
+                  'imagePath': imagePath, // Include the updated image path
                 };
-                editGift(updatedGift);
+                editGift(
+                    updatedGift); // Assuming editGift updates the gift in your database
                 Navigator.pop(context);
               },
               child: Text('Save'),

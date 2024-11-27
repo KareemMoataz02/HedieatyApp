@@ -1,79 +1,95 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; // Your DatabaseHelper class
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'database_helper.dart';
 import 'event_list_page.dart';
 import 'my_pledged_gifts_page.dart';
 
-class ProfilePage extends StatefulWidget {
-  final String email;
+class ProfilePage extends HookWidget {
+  final String email; // Email of the user to display profile for
 
-  ProfilePage({required this.email});
-
-  @override
-  _ProfilePageState createState() => _ProfilePageState();
-}
-
-class _ProfilePageState extends State<ProfilePage> {
-  String username = 'User';
-  String phone = 'N/A';
-  String imagePath = '';
-  bool notificationsEnabled = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    try {
-      final dbHelper = DatabaseHelper();
-      final user = await dbHelper.getUserByEmail(widget.email);
-
-      if (user != null) {
-        setState(() {
-          username = user['username'] ?? 'User';
-          phone = user['phone'] ?? 'N/A';
-          imagePath = user['imagePath'] ?? '';
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User not found')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading user data: $e')),
-      );
-    }
-  }
-
-  Future<void> _updateUserData(String field, String value) async {
-    try {
-      final dbHelper = DatabaseHelper();
-      final user = await dbHelper.getUserByEmail(widget.email);
-
-      if (user != null) {
-        final updatedRows = await dbHelper.updateUser(user['id'], {field: value});
-        if (updatedRows > 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$field updated successfully')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update $field')),
-          );
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating user data: $e')),
-      );
-    }
-  }
+  const ProfilePage({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
+    final isEditable = useState(false); // Hook to determine if the profile is editable
+    final username = useState('User');
+    final phone = useState('N/A');
+    final imagePath = useState('');
+    final notificationsEnabled = useState(false);
+    final loggedInEmail = useState<String?>(''); // Track the logged-in user's email
+
+    Future<void> _initializeProfile() async {
+      final dbHelper = DatabaseHelper();
+      try {
+        // Fetch logged-in email from SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        loggedInEmail.value = prefs.getString('email');
+
+        // Load profile data
+        final user = await dbHelper.getUserByEmail(email);
+        if (user != null) {
+          username.value = user['username'] ?? 'User';
+          phone.value = user['phone'] ?? 'N/A';
+          imagePath.value = user['imagePath'] ?? '';
+          notificationsEnabled.value = user['notifications'] == 1;
+        }
+
+        // Allow editing only if the logged-in user matches the profile email
+        isEditable.value = (loggedInEmail.value?.toLowerCase() == email.toLowerCase());
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading profile: $e')),
+        );
+      }
+    }
+
+    Future<void> _updateUserData(String field, dynamic value) async {
+      try {
+        final dbHelper = DatabaseHelper();
+        final user = await dbHelper.getUserByEmail(email);
+
+        if (user != null) {
+          final updatedRows = await dbHelper.updateUser(user['id'], {field: value});
+          if (updatedRows > 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$field updated successfully')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to update $field')),
+            );
+          }
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $e')),
+        );
+      }
+    }
+
+    Future<void> _updateProfileImage() async {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image != null) {
+        final dbHelper = DatabaseHelper();
+        final user = await dbHelper.getUserByEmail(email);
+
+        if (user != null) {
+          await dbHelper.updateUser(user['id'], {'imagePath': image.path});
+          imagePath.value = image.path; // Update UI with the new image path
+        }
+      }
+    }
+
+    useEffect(() {
+      _initializeProfile();
+      return null; // No cleanup needed
+    }, []);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Profile'),
@@ -83,116 +99,122 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             SizedBox(height: 20),
-            _buildProfilePicture(),
+            _buildProfilePicture(isEditable.value, imagePath, _updateProfileImage),
             SizedBox(height: 20),
-            _buildProfileDetails(),
+            _buildProfileDetails(
+              isEditable.value,
+              username,
+              phone,
+              _updateUserData,
+                  () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventListPage(email: email),
+                ),
+              ),
+            ),
             SizedBox(height: 20),
-            _buildSettings(),
+            _buildSettings(
+              isEditable.value,
+              notificationsEnabled,
+                  (newValue) => _updateUserData('notifications', newValue ? 1 : 0),
+                  () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MyPledgedGiftsPage(email: email),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfilePicture() {
+  Widget _buildProfilePicture(
+      bool isEditable,
+      ValueNotifier<String> imagePath,
+      Future<void> Function() updateProfileImage,
+      ) {
     return Center(
       child: Stack(
         children: [
           CircleAvatar(
-            radius: 50,
-            backgroundImage: imagePath.isNotEmpty
-                ? FileImage(File(imagePath))
+            radius: 70,
+            backgroundImage: imagePath.value.isNotEmpty
+                ? FileImage(File(imagePath.value))
                 : AssetImage('assets/logo.jpeg') as ImageProvider,
           ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: IconButton(
-              icon: Icon(Icons.edit, color: Colors.blue),
-              onPressed: _updateProfilePicture,
+          if (isEditable)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: IconButton(
+                icon: Icon(Icons.edit, color: Colors.blue),
+                onPressed: updateProfileImage,
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  void _updateProfilePicture() {
-    // Implement functionality to update profile picture
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Profile picture update coming soon!')),
-    );
-  }
-
-  Widget _buildProfileDetails() {
+  Widget _buildProfileDetails(
+      bool isEditable,
+      ValueNotifier<String> username,
+      ValueNotifier<String> phone,
+      Function(String, String) updateUser,
+      VoidCallback navigateToEventsPage,
+      ) {
     return Column(
       children: [
         ListTile(
-          title: TextFormField(
-            key: Key(username),
-            initialValue: username,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.start,
-            decoration: InputDecoration(border: InputBorder.none),
-            onChanged: (value) => username = value,
-          ),
-          trailing: IconButton(
+          title: isEditable
+              ? TextFormField(
+            initialValue: username.value,
+            decoration: InputDecoration(labelText: 'Username'),
+            onChanged: (value) => username.value = value,
+          )
+              : Text(username.value, style: TextStyle(fontSize: 24)),
+          trailing: isEditable
+              ? IconButton(
             icon: Icon(Icons.save),
-            onPressed: () => _updateUserData('username', username),
-          ),
+            onPressed: () => updateUser('username', username.value),
+          )
+              : null,
         ),
-        Divider(),
         ListTile(
-          title: Text(
-            'Phone: $phone',
-            style: TextStyle(fontSize: 18),
-          ),
+          title: Text('Phone: ${phone.value}'),
+        ),
+        ElevatedButton(
+          onPressed: navigateToEventsPage,
+          child: Text('View Events'),
         ),
       ],
     );
   }
 
-  Widget _buildSettings() {
-    return Expanded(
-      child: ListView(
-        children: [
-          ListTile(
+  Widget _buildSettings(
+      bool isEditable,
+      ValueNotifier<bool> notificationsEnabled,
+      Function(bool) updateNotifications,
+      VoidCallback onPledgedGiftsNavigate,
+      ) {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: onPledgedGiftsNavigate,
+          child: Text('My Pledged Gifts'),
+        ),
+        if (isEditable)
+          SwitchListTile(
             title: Text('Enable Notifications'),
-            trailing: Switch(
-              value: notificationsEnabled,
-              onChanged: (value) {
-                setState(() {
-                  notificationsEnabled = value;
-                });
-              },
-            ),
-          ),
-          Divider(),
-          ListTile(
-            title: Text('Create New Event'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EventListPage(email: widget.email),
-                ),
-              );
+            value: notificationsEnabled.value,
+            onChanged: (value) {
+              notificationsEnabled.value = value;
+              updateNotifications(value);
             },
           ),
-          Divider(),
-          ListTile(
-            title: Text('My Pledged Gifts'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MyPledgedGiftsPage(email: widget.email),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
+   ]);
   }
 }

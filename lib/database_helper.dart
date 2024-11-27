@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -52,10 +51,12 @@ class DatabaseHelper {
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         phone TEXT UNIQUE NOT NULL,
-        imagePath TEXT
+        imagePath TEXT,
+        INTEGER DEFAULT 0
       )
     ''');
   }
+
 
   Future<int> insertUser(Map<String, dynamic> user) async {
     final db = await database;
@@ -153,9 +154,6 @@ class DatabaseHelper {
     if (!await checkIfFriendExists(userId, friendId)) {
       await db.insert('friends', {'user_id': userId, 'friend_id': friendId});
       await db.insert('friends', {'user_id': friendId, 'friend_id': userId});
-      print('Friendship added between $userId and $friendId');
-    } else {
-      print('Friendship already exists between $userId and $friendId');
     }
   }
 
@@ -258,6 +256,7 @@ class DatabaseHelper {
       category TEXT,
       price REAL NOT NULL CHECK(price >= 0), -- Ensure price is non-negative
       status TEXT CHECK(status IN ('Available', 'Pledged'), -- Status constraint
+      image_path TEXT
       event_id INTEGER NOT NULL,
       FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE
     )
