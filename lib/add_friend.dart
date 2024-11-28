@@ -47,7 +47,8 @@ class _AddFriendPageState extends State<AddFriendPage> {
         return;
       }
 
-      bool existingFriend = await dbHelper.checkIfFriendExists(userId, friendId);
+      bool existingFriend = await dbHelper.checkIfFriendExists(
+          userId, friendId);
       if (existingFriend) {
         showDialogMessage('Error', 'This user is already your friend');
       } else {
@@ -156,7 +157,8 @@ class _AddFriendPageState extends State<AddFriendPage> {
                   addFriend(input, isEmail: true);
                   Navigator.of(context).pop();
                 } else {
-                  showDialogMessage('Error', 'Please enter a valid email address');
+                  showDialogMessage(
+                      'Error', 'Please enter a valid email address');
                 }
               },
               child: Text('Add by Email'),
@@ -168,7 +170,8 @@ class _AddFriendPageState extends State<AddFriendPage> {
                   addFriend(input, isEmail: false);
                   Navigator.of(context).pop();
                 } else {
-                  showDialogMessage('Error', 'Please enter a valid phone number');
+                  showDialogMessage(
+                      'Error', 'Please enter a valid phone number');
                 }
               },
               child: Text('Add by Phone'),
@@ -187,11 +190,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
   // Email validation
   bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(
+        email);
   }
 
   // Phone validation (basic validation)
   bool _isValidPhone(String phone) {
-    return RegExp(r'^[0-9]{10,15}$').hasMatch(phone); // Adjust format as needed
+    return RegExp(r'^\+?[1-9]\d{1,14}$').hasMatch(phone);
   }
 }

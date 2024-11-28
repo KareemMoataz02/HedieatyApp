@@ -175,9 +175,12 @@ class _EventListPageState extends State<EventListPage> {
                     final dbHelper = DatabaseHelper();
                     final newId = await dbHelper.insertEvent(updatedEvent);
                     updatedEvent['id'] = newId;
-                    setState(() => events.add(updatedEvent)); // Add to mutable list
+                    setState(() {
+                      events.add(updatedEvent); // Add to mutable list
+                    });
                   }
-                  Navigator.of(context).pop();
+                  // Close the dialog after the state update
+                  Navigator.of(context).pop(); // Close the dialog
                 }
               },
             ),

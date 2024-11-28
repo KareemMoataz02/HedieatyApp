@@ -215,7 +215,7 @@ class DatabaseHelper {
       status TEXT NOT NULL,
       deadline TEXT NOT NULL,
       email TEXT NOT NULL,
-      user_id INTEGER, -- Added user_id column for foreign key
+      user_id INTEGER,
       FOREIGN KEY(user_id) REFERENCES users(id)
     )
   ''');
@@ -244,22 +244,39 @@ class DatabaseHelper {
     final db = await database;
     return await db.query('events', where: 'email = ?', whereArgs: [email]);
   }
+  // Method to get event details by ID
+  Future<Map<String, dynamic>?> getEventById(int eventId) async {
+    final db = await database;
+
+    // Query to fetch the event based on the eventId
+    final List<Map<String, dynamic>> result = await db.query(
+      'events',
+      where: 'id = ?',  // Use the eventId parameter
+      whereArgs: [eventId],  // The value for the WHERE clause
+    );
+
+    // If the result is not empty, return the first event
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+    return null; // Return null if no event found
+  }
 
   // MARK: - Gift Operations
 
   Future<void> _createGiftsTable(Database db) async {
     await db.execute('''
     CREATE TABLE gifts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      category TEXT,
-      price REAL NOT NULL CHECK(price >= 0), -- Ensure price is non-negative
-      status TEXT CHECK(status IN ('Available', 'Pledged'), -- Status constraint
-      image_path TEXT
-      event_id INTEGER NOT NULL,
-      FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE
-    )
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL NOT NULL CHECK(price >= 0),
+    status TEXT CHECK(status IN ('Available', 'Pledged')),
+    image_path TEXT,
+    event_id INTEGER NOT NULL,
+    FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE
+);
   ''');
   }
   Future<int> insertGift(Map<String, dynamic> gift) async {
@@ -313,18 +330,21 @@ class DatabaseHelper {
     return await db.insert('pledges', {
       'userEmail': userEmail,
       'giftId': giftId,
+      'pledgedAt': DateTime.now().toIso8601String(),
     });
   }
+
   Future<List<Map<String, dynamic>>> getPledgedGiftsByUser(String userEmail) async {
     final db = await database;
     return await db.rawQuery('''
-    SELECT g.*
+    SELECT g.*, p.pledgedAt
     FROM gifts g
     INNER JOIN pledges p ON g.id = p.giftId
     WHERE p.userEmail = ?
     ORDER BY p.pledgedAt DESC
   ''', [userEmail]);
   }
+
   Future<int> removePledge(String userEmail, int giftId) async {
     final db = await database;
     return await db.delete(

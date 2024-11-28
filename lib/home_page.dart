@@ -83,6 +83,7 @@ class _HomePageState extends State<HomePage> {
           .contains(searchQuery.toLowerCase());
     }).toList();
 
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Friends List'),
@@ -184,7 +185,11 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => AddFriendPage(email: widget.email)),
+                    builder: (context) => AddFriendPage(email: widget.email),
+                  ),
+                ).then((_) {
+                    fetchRecentFriends(); // Call this when returning
+                  }
                 );
               },
             ),

@@ -42,13 +42,13 @@ class _SignUpPageState extends State<SignUpPage> {
     if (_passwordController.text.isEmpty || _passwordController.text.length < 6) {
       return "Password must be at least 6 characters.";
     }
-    if (_phoneController.text.isEmpty || _phoneController.text.length != 11) {
+    if (_phoneController.text.isEmpty || _phoneController.text.length != 13) {
       return "Enter a valid phone number.";
     }
     return null;
   }
 
-  /// Handles the sign-up process
+  /// Sign up process with phone verification
   Future<void> _signUp() async {
     final dbHelper = DatabaseHelper();
     final email = _emailController.text.trim();
@@ -63,56 +63,117 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // Check if user exists in the database
+    // Check if the user already exists
     final existingUser = await dbHelper.getUserByEmailOrPhone(email, phone);
     if (existingUser != null) {
       _showAlertDialog("Error", "Email or phone number already in use.");
       return;
     }
 
-    try {
-      // Firebase Authentication
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+    // Verify phone number
+    _verifyPhoneNumber(phone, () async {
+      try {
+        // Firebase Authentication
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password);
 
-      final user = userCredential.user;
-      if (user == null) {
-        throw Exception("Failed to create user.");
+        final user = userCredential.user;
+        if (user == null) {
+          throw Exception("Failed to create user.");
+        }
+
+        await user.updateDisplayName(username);
+
+        // Insert user into the local database
+        await dbHelper.insertUser({
+          'username': username,
+          'email': email,
+          'password': password,
+          'phone': phone,
+          'imagePath': imagePath,
+        });
+
+        await user.sendEmailVerification();
+        _showAlertDialog(
+          "Success",
+          "A verification email has been sent to $email. Please verify before logging in.",
+          isSuccess: true,
+        );
+      } on FirebaseAuthException catch (e) {
+        String errorMessage;
+        if (e.code == 'email-already-in-use') {
+          errorMessage = 'This email is already in use.';
+        } else if (e.code == 'weak-password') {
+          errorMessage = 'The password is too weak.';
+        } else {
+          errorMessage = 'An error occurred. Please try again.';
+        }
+        _showAlertDialog("Sign Up Error", errorMessage);
+      } catch (e) {
+        _showAlertDialog("Error", "An unexpected error occurred: $e");
       }
-
-      await user.updateDisplayName(username);
-
-      // Insert user into the local database
-      await dbHelper.insertUser({
-        'username': username,
-        'email': email,
-        'password': password,
-        'phone': phone,
-        'imagePath': imagePath,
-      });
-
-      await user.sendEmailVerification();
-      _showAlertDialog(
-        "Success",
-        "A verification email has been sent to $email. Please verify before logging in.",
-        isSuccess: true,
-      );
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      if (e.code == 'email-already-in-use') {
-        errorMessage = 'This email is already in use.';
-      } else if (e.code == 'weak-password') {
-        errorMessage = 'The password is too weak.';
-      } else {
-        errorMessage = 'An error occurred. Please try again.';
-      }
-      _showAlertDialog("Sign Up Error", errorMessage);
-    } catch (e) {
-      _showAlertDialog("Error", "An unexpected error occurred: $e");
-    }
+    });
   }
 
-  /// Shows an alert dialog
+  /// Verify phone number using Firebase
+  void _verifyPhoneNumber(String phoneNumber, Function onVerificationSuccess) {
+    FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        // Automatically sign in when verification completes
+        await FirebaseAuth.instance.signInWithCredential(credential);
+        onVerificationSuccess();
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        String errorMessage = e.message ?? "Phone verification failed.";
+        _showAlertDialog("Verification Error", errorMessage);
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        _showCodeInputDialog(verificationId, onVerificationSuccess);
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+  }
+
+  /// Show dialog to enter verification code
+  void _showCodeInputDialog(String verificationId, Function onVerificationSuccess) {
+    final codeController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Enter Verification Code"),
+          content: TextField(
+            controller: codeController,
+            decoration: InputDecoration(labelText: "Verification Code"),
+            keyboardType: TextInputType.number,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final code = codeController.text.trim();
+                try {
+                  PhoneAuthCredential credential = PhoneAuthProvider.credential(
+                    verificationId: verificationId,
+                    smsCode: code,
+                  );
+                  await FirebaseAuth.instance.signInWithCredential(credential);
+                  Navigator.of(context).pop(); // Close the dialog
+                  onVerificationSuccess();
+                } catch (e) {
+                  _showAlertDialog("Error", "Invalid verification code.");
+                }
+              },
+              child: Text("Verify"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Show an alert dialog
   Future<void> _showAlertDialog(String title, String message, {bool isSuccess = false}) async {
     showDialog(
       context: context,
@@ -169,7 +230,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             TextField(
               controller: _phoneController,
-              decoration: InputDecoration(labelText: 'Phone'),
+              decoration: InputDecoration(labelText: 'Phone +20xxxxxxxxxx'),
               keyboardType: TextInputType.phone,
             ),
             SizedBox(height: 20),

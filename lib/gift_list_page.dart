@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,16 +34,34 @@ class _GiftListPageState extends State<GiftListPage> {
     _checkOwnership(); // Check if the user is the owner
   }
 
-  // Load gifts from the database for the given event
+  // Load gifts with the correct pledged status
   Future<void> _loadGifts() async {
     setState(() {
       isLoading = true;
     });
     try {
+      final dbHelper = DatabaseHelper();
       final giftList = await dbHelper.getGiftsByEventId(widget.eventId);
+
+      // Fetch logged-in user's email
+      final prefs = await SharedPreferences.getInstance();
+      final loggedInEmail = prefs.getString('email') ?? '';
+
+      // Check if each gift is pledged by the logged-in user
+      final updatedGiftList = await Future.wait(giftList.map((gift) async {
+        final pledges = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
+        final isPledgedByUser =
+        pledges.any((pledgedGift) => pledgedGift['id'] == gift['id']);
+        return {
+          ...gift,
+          'status': isPledgedByUser
+              ? 'Pledged'
+              : gift['status'] ?? 'Available', // Ensure a default status
+        };
+      }));
+
       setState(() {
-        gifts =
-            giftList.map((gift) => Map<String, dynamic>.from(gift)).toList();
+        gifts = updatedGiftList;
       });
     } catch (e) {
       print("Error loading gifts: $e");
@@ -79,37 +95,69 @@ class _GiftListPageState extends State<GiftListPage> {
     });
   }
 
-  // Toggle the pledge status (Available/Pledged) of a gift
+// Toggle the pledge status (Available/Pledged) of a gift
   Future<void> togglePledge(int index) async {
+    final currentGift = gifts[index];
+    final isPledged = currentGift['status'] == 'Pledged';
+    final dbHelper = DatabaseHelper();
+
+    // Get the logged-in user's email
+    final prefs = await SharedPreferences.getInstance();
+    final loggedInEmail = prefs.getString('email') ?? '';
+
+    if (isOwner) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Can not pledge your own gift')));
+      return;
+    }
+
+    if (isPledged) {
+      // Check if the current user is the one who pledged the gift
+      final pledgedGifts = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
+      final isPledgedByUser = pledgedGifts.any((pledgedGift) =>
+      pledgedGift['id'] == currentGift['id']);
+
+      if (!isPledgedByUser) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+              'Only the original pledger can unpledge this gift.')),
+        );
+      }
+    }
     setState(() {
       isLoading = true;
     });
 
-    final currentGift = gifts[index];
-    final isPledged = currentGift['status'] == 'Pledged';
-    final updatedStatus = isPledged ? 'Available' : 'Pledged';
-
     try {
-      // Update the gift status in the database first
-      if (!isPledged) {
-        await dbHelper.insertPledge(widget.friendEmail, currentGift['id']);
+      if (isPledged) {
+        // Remove the pledge
+        await dbHelper.removePledge(loggedInEmail, currentGift['id']);
+        setState(() {
+          gifts[index]['status'] = 'Available';
+        });
       } else {
-        await dbHelper.removePledge(widget.friendEmail, currentGift['id']);
-      }
+        // Check if the gift is already pledged
+        final pledgedGifts = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
+        final isAlreadyPledged = pledgedGifts.any((pledgedGift) =>
+        pledgedGift['id'] == currentGift['id']);
 
-      // Then update the UI
-      setState(() {
-        gifts[index]['status'] = updatedStatus;
-      });
+        if (isAlreadyPledged) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('This gift is already pledged.')),
+          );
+          return;
+        }
+
+        // Pledge the gift
+        await dbHelper.insertPledge(loggedInEmail, currentGift['id']);
+        setState(() {
+          gifts[index]['status'] = 'Pledged';
+        });
+      }
     } catch (e) {
       print("Error toggling pledge: $e");
-      // Roll back UI update in case of error
-      setState(() {
-        gifts[index]['status'] = isPledged ? 'Available' : 'Pledged';
-      });
-      // Show an error message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update pledge status')),
+        SnackBar(content: Text('Failed to update pledge status.')),
       );
     } finally {
       setState(() {
@@ -117,7 +165,6 @@ class _GiftListPageState extends State<GiftListPage> {
       });
     }
   }
-
   // Edit the details of an existing gift
   Future<void> editGift(Map<String, dynamic> updatedGift) async {
     try {
@@ -204,59 +251,78 @@ class _GiftListPageState extends State<GiftListPage> {
             child: ListView.builder(
               itemCount: gifts.length,
               itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(gifts[index]['name']),
-                  subtitle: Text(
-                      '${gifts[index]['category']} - ${gifts[index]['status']}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedSwitcher(
-                        duration: Duration(milliseconds: 300),
-                        transitionBuilder: (child, animation) {
-                          return ScaleTransition(
-                              scale: animation, child: child);
-                        },
-                        child: IconButton(
-                          key: ValueKey(gifts[index]['status']),
-                          icon: Icon(
-                            gifts[index]['status'] == 'Pledged' ? Icons
-                                .thumb_down : Icons.thumb_up,
-                            color: gifts[index]['status'] == 'Pledged' ? Colors
-                                .red : Colors.green,
-                          ),
-                          onPressed: () {
-                            if (!isOwner)
-                              togglePledge(index);
+                final gift = gifts[index];
+                final giftStatus = gift['status'];
+                final bool isPledged = giftStatus == 'Pledged';
+
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: ListTile(
+                    title: Text(
+                      gift['name'],
+                      style: isPledged
+                          ? TextStyle(
+                          decoration: TextDecoration.lineThrough,
+                          color: Colors.grey)
+                          : TextStyle(),
+                    ),
+                    subtitle: Text(
+                      '${gift['category']} - ${gift['status']}',
+                      style: isPledged
+                          ? TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey)
+                          : TextStyle(),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: Duration(milliseconds: 300),
+                          transitionBuilder: (child, animation) {
+                            return ScaleTransition(
+                                scale: animation, child: child);
                           },
-                        ),
-                      ),
-                      // Show Edit button only if the logged-in user is the owner
-                      if (isOwner)
-                        IconButton(
-                          icon: Icon(Icons.edit),
-                          onPressed: () {
-                            _showEditDialog(context, gifts[index]);
-                          },
-                        ),
-                      if (isOwner)
-                        IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () => deleteGift(index)
-                        ),
-                      IconButton(
-                        icon: Icon(Icons.info),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  GiftDetailsPage(gift: gifts[index]),
+                          child: IconButton(
+                            key: ValueKey(gift['status']),
+                            icon: Icon(
+                              isPledged
+                                  ? Icons.thumb_down
+                                  : Icons.thumb_up,
+                              color: isPledged ? Colors.red : Colors.green,
                             ),
-                          );
-                        },
-                      ),
-                    ],
+                            onPressed: () {
+                                togglePledge(index);
+                            },
+                          ),
+                        ),
+                        // Show Edit button only if the logged-in user is the owner
+                        if (isOwner)
+                          IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () {
+                              _showEditDialog(context, gift);
+                            },
+                          ),
+                        if (isOwner)
+                          IconButton(
+                            icon: Icon(Icons.delete),
+                            onPressed: () => deleteGift(index),
+                          ),
+                        IconButton(
+                          icon: Icon(Icons.info),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    GiftDetailsPage(gift: gift),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
