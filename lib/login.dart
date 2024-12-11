@@ -4,9 +4,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'home_page.dart';
 import 'sign_up_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isPasswordVisible = false; // Track password visibility
 
   Future<void> _login(BuildContext context) async {
     if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
@@ -143,8 +149,20 @@ class LoginPage extends StatelessWidget {
             ),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
-              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordVisible = !_isPasswordVisible;
+                    });
+                  },
+                ),
+              ),
+              obscureText: !_isPasswordVisible,
             ),
             SizedBox(height: 20),
             ElevatedButton(

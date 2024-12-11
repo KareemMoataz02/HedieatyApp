@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login.dart';
 import 'home_page.dart';
+import 'database_helper.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(HedieatyApp());
@@ -22,34 +24,79 @@ class HedieatyApp extends StatelessWidget {
   }
 }
 
-class AppState extends HookWidget {
+class AppState extends StatefulWidget {
+  @override
+  _AppState createState() => _AppState();
+}
+
+class _AppState extends State<AppState> {
+  bool isLoggedIn = false;  // Track login status
+  String? email;  // Track user email
+  bool isConnected = false; // Track network connectivity status
+  final dbHelper = DatabaseHelper();
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Check login status and connectivity when app starts
+    checkLoginStatus();
+    listenToConnectivityChanges();
+  }
+
+  // Check the login status from SharedPreferences
+  Future<void> checkLoginStatus() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      bool loginStatus = prefs.getBool('isLoggedIn') ?? false;
+      String? userEmail = prefs.getString('email');
+
+      setState(() {
+        isLoggedIn = loginStatus;
+        email = userEmail;
+      });
+    } catch (e) {
+      debugPrint("Error reading SharedPreferences: $e");
+      setState(() {
+        isLoggedIn = false;
+        email = null;
+      });
+    }
+  }
+
+  // Listen for connectivity changes
+  void listenToConnectivityChanges() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> result) {
+      // Checking if the list contains mobile or Wi-Fi connectivity
+      setState(() {
+        isConnected = result.contains(ConnectivityResult.wifi) || result.contains(ConnectivityResult.mobile);
+      });
+
+      if (isConnected) {
+        // Sync data when connectivity is restored
+        synchronizeDatabases();
+        checkLoginStatus();
+      }
+    });
+  }
+
+  // Synchronize data with Firebase
+  Future<void> synchronizeDatabases() async {
+    await dbHelper.synchronizeDatabases();  // Sync with local database and Firebase
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = useState(false);  // Hook to track login state
-    final email = useState<String?>(null);  // Hook to track email
-
-    Future<void> checkLoginStatus(ValueNotifier<bool> isLoggedIn, ValueNotifier<String?> email) async {
-      try {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        bool loginStatus = prefs.getBool('isLoggedIn') ?? false;
-        String? userEmail = prefs.getString('email');
-
-        isLoggedIn.value = loginStatus;
-        email.value = userEmail;
-      } catch (e) {
-        debugPrint("Error reading SharedPreferences: $e");
-        isLoggedIn.value = false;
-        email.value = null;
-      }
-    }
-
-    useEffect(() {
-      checkLoginStatus(isLoggedIn, email);  // Call function to check login status
-      return null;
-    }, []);
-
-    return isLoggedIn.value && email.value != null
-        ? HomePage(email: email.value!) // Go to HomePage if logged in
+    return isLoggedIn && email != null
+        ? HomePage(email: email!) // Go to HomePage if logged in
         : LoginPage(); // Go to LoginPage if not logged in
+  }
+
+  @override
+  void dispose() {
+    // Cancel connectivity subscription to prevent memory leaks
+    _connectivitySubscription.cancel();
+    super.dispose();
   }
 }

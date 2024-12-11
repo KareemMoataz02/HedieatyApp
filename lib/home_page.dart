@@ -22,7 +22,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> recentFriends = [];
   String searchQuery = '';
   String username = '';
-  late String imagePath ;
+  String imagePath = '' ;
 
   @override
   void initState() {
@@ -41,6 +41,13 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<String?> _loadFriendImage(String email) async {
+    final dbHelper = DatabaseHelper();
+    final user = await dbHelper.getUserByEmail(email);
+    return user?['imagePath']; // Return the image path or null if not found
+  }
+
+
   // Function to fetch current user ID from the database
   Future<int> getCurrentUserId() async {
     final dbHelper = DatabaseHelper();
@@ -54,7 +61,7 @@ class _HomePageState extends State<HomePage> {
     final dbHelper = DatabaseHelper();
 
     // Fetch the recent friends from the database
-    final friends = await dbHelper.getRecentFriendsByUserId(userId);
+    final friends = await dbHelper.getAcceptedFriendsByUserId(userId);
 
     setState(() {
       recentFriends = friends;
@@ -212,26 +219,26 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 final friend = filteredFriends[index];
                 return ListTile(
-                  leading: GestureDetector(
-                    onTap: () {
-                      // Navigate to ProfilePage when profile image is tapped
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProfilePage(email: friend['email']),
-                        ),
-                      );
+                  leading: FutureBuilder<String?>(
+                    future: _loadFriendImage(friend['email']),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return CircleAvatar(
+                          radius: 30,
+                          child: CircularProgressIndicator(), // Show loading indicator
+                        );
+                      } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
+                        return CircleAvatar(
+                          radius: 30,
+                          backgroundImage: AssetImage('Assets/default.png'), // Default image
+                        );
+                      } else {
+                        return CircleAvatar(
+                          radius: 30,
+                          backgroundImage: FileImage(File(snapshot.data!)), // Use the loaded image path
+                        );
+                      }
                     },
-                    child: CircleAvatar(
-                      radius: 35, // Larger size for emphasis
-                      backgroundColor: Colors.blueAccent, // Add a bold background for better visibility
-                      child: CircleAvatar(
-                        radius: 30, // Inner circle with smaller radius for border effect
-                        backgroundImage: friend['imagePath'] != null
-                            ? AssetImage(friend['imagePath'])
-                            : AssetImage('Assets/default.png'), // Default image if none exists
-                      ),
-                    ),
                   ),
                   title: Text(
                     friend['username'] ?? 'Unknown Friend',
@@ -260,9 +267,13 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.push(context,
+                  Navigator.push(
+                    context,
                     MaterialPageRoute(
-                        builder: (context) => EventListPage(email: widget.email)),);},
+                      builder: (context) => EventListPage(email: widget.email),
+                    ),
+                  );
+                },
                 child: Text('Create Your Own Event'),
               ),
             ),

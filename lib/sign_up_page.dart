@@ -16,6 +16,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
   File? _image;
+  bool _isPasswordVisible = false; // State to track password visibility
 
   /// Picks an image from the gallery
   Future<void> _pickImage() async {
@@ -225,8 +226,20 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
-              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordVisible = !_isPasswordVisible;
+                    });
+                  },
+                ),
+              ),
+              obscureText: !_isPasswordVisible, // Toggle password visibility
             ),
             TextField(
               controller: _phoneController,
