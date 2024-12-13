@@ -40,7 +40,8 @@ class _SignUpPageState extends State<SignUpPage> {
     if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
       return "Enter a valid email.";
     }
-    if (_passwordController.text.isEmpty || _passwordController.text.length < 6) {
+    if (_passwordController.text.isEmpty ||
+        _passwordController.text.length < 6) {
       return "Password must be at least 6 characters.";
     }
     if (_phoneController.text.isEmpty || _phoneController.text.length != 13) {
@@ -137,7 +138,8 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   /// Show dialog to enter verification code
-  void _showCodeInputDialog(String verificationId, Function onVerificationSuccess) {
+  void _showCodeInputDialog(String verificationId,
+      Function onVerificationSuccess) {
     final codeController = TextEditingController();
 
     showDialog(
@@ -175,83 +177,114 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   /// Show an alert dialog
-  Future<void> _showAlertDialog(String title, String message, {bool isSuccess = false}) async {
+  Future<void> _showAlertDialog(String title, String message,
+      {bool isSuccess = false}) async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (isSuccess) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                );
-              }
-            },
-            child: Text("OK"),
+      builder: (context) =>
+          AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (isSuccess) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => LoginPage()),
+                    );
+                  }
+                },
+                child: Text("OK"),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Sign Up')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             GestureDetector(
               onTap: _pickImage,
               child: CircleAvatar(
-                radius: 50,
+                radius: 60,
+                backgroundColor: Colors.grey[300],
                 backgroundImage: _image != null ? FileImage(_image!) : null,
-                child: _image == null ? Icon(Icons.add_a_photo, size: 50) : null,
+                child: _image == null ? Icon(
+                    Icons.camera_alt, size: 50, color: Colors.grey[600]) : null,
               ),
             ),
             SizedBox(height: 20),
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(labelText: 'Username'),
-            ),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                ),
-              ),
-              obscureText: !_isPasswordVisible, // Toggle password visibility
-            ),
-            TextField(
-              controller: _phoneController,
-              decoration: InputDecoration(labelText: 'Phone +20xxxxxxxxxx'),
-              keyboardType: TextInputType.phone,
-            ),
+            _buildTextField(_usernameController, 'Username', Icons.person),
+            _buildTextField(_emailController, 'Email', Icons.email),
+            _buildPasswordField(),
+            _buildTextField(
+                _phoneController, 'Phone +20xxxxxxxxxx', Icons.phone,
+                keyboardType: TextInputType.phone),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _signUp,
+              onPressed: () => _signUp(),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white, backgroundColor: Theme
+                    .of(context)
+                    .primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
               child: Text('Sign Up'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label,
+      IconData icon, {TextInputType? keyboardType}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: TextField(
+        controller: _passwordController,
+        obscureText: !_isPasswordVisible,
+        decoration: InputDecoration(
+          labelText: 'Password',
+          prefixIcon: Icon(Icons.lock),
+          suffixIcon: IconButton(
+            icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+            onPressed: () {
+              setState(() {
+                _isPasswordVisible = !_isPasswordVisible;
+              });
+            },
+          ),
+          border: OutlineInputBorder(),
         ),
       ),
     );

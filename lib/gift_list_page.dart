@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'add_gift_page.dart';
 import 'gift_details_page.dart';
 import 'database_helper.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+
 
 class GiftListPage extends StatefulWidget {
   final String friendEmail;
@@ -24,14 +28,29 @@ class _GiftListPageState extends State<GiftListPage> {
   List<Map<String, dynamic>> gifts = [];
   String sortBy = 'name';
   bool isLoading = false;
-  bool isOwner = false; // This will store whether the logged-in user is the owner
+  bool isOwner = false;
+  bool isConnected = false;
   final dbHelper = DatabaseHelper();
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _loadGifts();
     _checkOwnership(); // Check if the user is the owner
+  }
+
+  // Listen for connectivity changes
+  void listenToConnectivityChanges() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      // Check if the list of results contains an internet connection
+      bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
+
+      // Update the connectivity status
+      setState(() {
+        isConnected = hasInternet;
+      });
+    });
   }
 
   // Load gifts with the correct pledged status
@@ -135,7 +154,13 @@ class _GiftListPageState extends State<GiftListPage> {
         setState(() {
           gifts[index]['status'] = 'Available';
         });
-      } else {
+      }
+      else if (!isConnected){
+        ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Can not Pledge a gift while offline')),
+        );
+      }
+      else {
         // Check if the gift is already pledged
         final pledgedGifts = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
         final isAlreadyPledged = pledgedGifts.any((pledgedGift) =>

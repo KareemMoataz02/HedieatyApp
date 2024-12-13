@@ -30,9 +30,9 @@ class AppState extends StatefulWidget {
 }
 
 class _AppState extends State<AppState> {
-  bool isLoggedIn = false;  // Track login status
-  String? email;  // Track user email
-  bool isConnected = false; // Track network connectivity status
+  bool isLoggedIn = false;
+  String? email;
+  bool isConnected = false;
   final dbHelper = DatabaseHelper();
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
@@ -65,19 +65,23 @@ class _AppState extends State<AppState> {
     }
   }
 
-  // Listen for connectivity changes
+// Listen for connectivity changes
   void listenToConnectivityChanges() {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> result) {
-      // Checking if the list contains mobile or Wi-Fi connectivity
-      setState(() {
-        isConnected = result.contains(ConnectivityResult.wifi) || result.contains(ConnectivityResult.mobile);
-      });
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      // Check if the list of results contains an internet connection
+      bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
 
-      if (isConnected) {
-        // Sync data when connectivity is restored
+      // If there is a change to a connected state and it was previously not connected
+      if (hasInternet && !isConnected) {
+        print("Connectivity restored. Synchronizing databases...");
         synchronizeDatabases();
         checkLoginStatus();
       }
+
+      // Update the connectivity status
+      setState(() {
+        isConnected = hasInternet;
+      });
     });
   }
 
