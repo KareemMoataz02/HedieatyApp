@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login.dart';
 import 'home_page.dart';
 import 'database_helper.dart';
-import 'connectivityManager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();

@@ -3,7 +3,6 @@ import 'database_helper.dart'; // Assume you have a DatabaseHelper for CRUD oper
 import 'gift_list_page.dart'; // Import GiftListPage
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'connectivityManager.dart';
 
 class EventListPage extends StatefulWidget {
   final String email;
