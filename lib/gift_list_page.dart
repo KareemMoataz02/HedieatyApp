@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +7,7 @@ import 'add_gift_page.dart';
 import 'gift_details_page.dart';
 import 'database_helper.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:http/http.dart' as http;
 
 
 class GiftListPage extends StatefulWidget {
@@ -32,25 +33,92 @@ class _GiftListPageState extends State<GiftListPage> {
   bool isConnected = false;
   final dbHelper = DatabaseHelper();
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
-
+  late Timer _internetCheckTimer; // Timer for periodic internet checks
+  late StreamSubscription _connectionChangeStream;
   @override
   void initState() {
     super.initState();
     _loadGifts();
     _checkOwnership(); // Check if the user is the owner
+
+    _checkInitialConnectivity();
+    listenToConnectivityChanges();
+//     ConnectionStatusSingleton connectionStatus = ConnectionStatusSingleton.getInstance();
+//     connectionStatus.initialize();
+//     _connectionChangeStream = connectionStatus.connectionChange.listen(connectionChanged);
+//   }
+//
+//
+//   void connectionChanged(dynamic hasConnection) {
+//     setState(() {
+//       isConnected = hasConnection;
+//     });
   }
 
+  @override
+  void dispose() {
+    _connectionChangeStream.cancel(); // Unsubscribe from the stream
+    super.dispose();
+  }
+  //Check initial connectivity status
+  void _checkInitialConnectivity() async {
+    // Correctly handle the list of ConnectivityResults
+    List<ConnectivityResult> results = await Connectivity().checkConnectivity();
+
+    bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
+
+    if (hasInternet) {
+      bool internetAvailable = await _checkInternetConnection();
+      setState(() {
+        isConnected = internetAvailable;
+      });
+    }
+    else {
+      setState(() {
+        isConnected = false;
+      });
+    }
+  }
   // Listen for connectivity changes
-  void listenToConnectivityChanges() {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+  void listenToConnectivityChanges(){
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async{
       // Check if the list of results contains an internet connection
       bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
-
-      // Update the connectivity status
+      if (hasInternet) {
+        bool internetAvailable = await _checkInternetConnection();
+        setState(() {
+          isConnected = internetAvailable;
+        });
+      }
+      else {
+        setState(() {
+          isConnected = false;
+        });
+      }
+    });
+    // Start a periodic check to ensure internet is available every 30 seconds
+    _internetCheckTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+      if (kDebugMode) {
+        print("TIMER FIRED");
+      }
+      bool internetAvailable = await _checkInternetConnection();
       setState(() {
-        isConnected = hasInternet;
+        isConnected = internetAvailable;
+        if (kDebugMode) {
+          print(isConnected);
+        }
       });
     });
+  }
+
+  // Perform a simple HTTP request to check if internet is accessible
+  Future<bool> _checkInternetConnection() async {
+    try {
+      final response = await http.get(Uri.parse('https://www.google.com')).timeout(Duration(seconds: 5));
+      return response.statusCode == 200; // If the response is 200, internet is available
+    } catch (e) {
+      return false; // If an error occurs (e.g., no internet), return false
+    }
   }
 
   // Load gifts with the correct pledged status
@@ -130,53 +198,38 @@ class _GiftListPageState extends State<GiftListPage> {
       return;
     }
 
-    if (isPledged) {
-      // Check if the current user is the one who pledged the gift
-      final pledgedGifts = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
-      final isPledgedByUser = pledgedGifts.any((pledgedGift) =>
-      pledgedGift['id'] == currentGift['id']);
-
-      if (!isPledgedByUser) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(
-              'Only the original pledger can unpledge this gift.')),
-        );
-      }
-    }
+    // Set isLoading true to show progress indicator during the operation
     setState(() {
       isLoading = true;
     });
 
     try {
       if (isPledged) {
-        // Remove the pledge
-        await dbHelper.removePledge(loggedInEmail, currentGift['id']);
-        setState(() {
-          gifts[index]['status'] = 'Available';
-        });
-      }
-      else if (!isConnected){
-        ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Can not Pledge a gift while offline')),
-        );
-      }
-      else {
-        // Check if the gift is already pledged
+        // Retrieve all pledges for this gift to check who pledged it
         final pledgedGifts = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
-        final isAlreadyPledged = pledgedGifts.any((pledgedGift) =>
-        pledgedGift['id'] == currentGift['id']);
+        final isPledgedByUser = pledgedGifts.any((pledgedGift) =>
+        pledgedGift['id'] == currentGift['id'] && pledgedGift['userEmail'] == loggedInEmail);
 
-        if (isAlreadyPledged) {
+        if (!isPledgedByUser) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('This gift is already pledged.')),
+            SnackBar(content: Text('Only the original pledger can unpledge this gift.')),
           );
-          return;
+        } else {
+          // Remove the pledge since it is confirmed that the current user pledged it
+          await dbHelper.removePledge(loggedInEmail, currentGift['id']);
+          setState(() {
+            currentGift['status'] = 'Available';  // Update the status of the gift to Available
+          });
         }
-
-        // Pledge the gift
+      } else if (!isConnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cannot Pledge a gift while offline')),
+        );
+      } else {
+        // Pledge the gift if it is not pledged and the device is online
         await dbHelper.insertPledge(loggedInEmail, currentGift['id']);
         setState(() {
-          gifts[index]['status'] = 'Pledged';
+          currentGift['status'] = 'Pledged';  // Update the status of the gift to Pledged
         });
       }
     } catch (e) {
@@ -186,7 +239,7 @@ class _GiftListPageState extends State<GiftListPage> {
       );
     } finally {
       setState(() {
-        isLoading = false;
+        isLoading = false;  // Ensure isLoading is set to false to hide the progress indicator
       });
     }
   }
@@ -317,7 +370,7 @@ class _GiftListPageState extends State<GiftListPage> {
                               color: isPledged ? Colors.red : Colors.green,
                             ),
                             onPressed: () {
-                                togglePledge(index);
+                              togglePledge(index);
                             },
                           ),
                         ),

@@ -3,7 +3,7 @@ import 'database_helper.dart'; // Assume you have a DatabaseHelper for CRUD oper
 import 'gift_list_page.dart'; // Import GiftListPage
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'connectivityManager.dart';
 
 class EventListPage extends StatefulWidget {
   final String email;
@@ -19,6 +19,7 @@ class _EventListPageState extends State<EventListPage> {
   String sortBy = 'name';
   String? selectedCategory;
   String? selectedStatus;
+  int? userid;
   String username = ''; // To store the user's username
   bool isLoading = false; // Loading indicator for async operations
   bool isOwner = false;  // This will store whether the logged-in user is the owner
@@ -50,6 +51,9 @@ class _EventListPageState extends State<EventListPage> {
       final dbHelper = DatabaseHelper();
       final user = await dbHelper.getUserByEmail(widget.email);
       username = user?['username'] ?? 'User';
+      userid = user?['id'];
+      print("ANA EL USER ID");
+      print(userid);
     } catch (e) {
       print("Error loading username: $e");
     } finally {
@@ -62,7 +66,9 @@ class _EventListPageState extends State<EventListPage> {
     setState(() => isLoading = true);
     try {
       final dbHelper = DatabaseHelper();
-      events = await dbHelper.getEventsByEmail(widget.email);
+      events = await dbHelper.getEventsByEmail(widget.email.toLowerCase());
+      print("ANA EVENTS");
+      print(events);
     } catch (e) {
       print("Error loading events: $e");
     } finally {
@@ -164,8 +170,8 @@ class _EventListPageState extends State<EventListPage> {
                     'status': selectedStatus,
                     'deadline': deadline.toIso8601String(),
                     'email': widget.email,
+                    'user_id' : userid,
                   };
-
                   if (isEditing) {
                     setState(() {
                       events[index] = updatedEvent; // Update locally

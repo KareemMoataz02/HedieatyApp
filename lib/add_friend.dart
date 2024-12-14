@@ -51,7 +51,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
         showDialogMessage('Success', 'Friend request sent');
         refreshData();
       }
-    } else {
+    }
+    else if( userId == user?['id']) {
+      showDialogMessage(
+          'Error', 'You can\'t send a friend request to yourself');
+    }
+    else {
       showDialogMessage('Error', 'No user found with this information');
     }
   }

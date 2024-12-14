@@ -27,8 +27,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadUsername(); // Load the username when the page initializes
-    fetchRecentFriends(); // Fetch recent friends from the database
+    _loadUsername();
+    fetchRecentFriends();
   }
 
   // Function to fetch username associated with the email

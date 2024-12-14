@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:hedieaty/connectivityManager.dart';
 
 class DatabaseHelper {
   // Singleton instance
@@ -19,6 +20,15 @@ class DatabaseHelper {
       _database = await _openDatabase();
     }
     return _database!;
+  }
+
+  Future<void> clearDatabase() async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'hedieaty.db');
+
+    // Delete the database
+    await deleteDatabase(path);
+    print("Database cleared");
   }
 
   // Initialize database
@@ -54,7 +64,8 @@ class DatabaseHelper {
         password TEXT NOT NULL,
         phone TEXT UNIQUE NOT NULL,
         imagePath TEXT,
-        synced INTEGER DEFAULT 0
+        synced INTEGER DEFAULT 0,
+        token TEXT
       )
     ''');
   }
@@ -120,6 +131,20 @@ class DatabaseHelper {
   }
 
   // MARK: - Connectivity Check
+
+  // Future<bool> isConnectedToInternet() async {
+  //   // Get the instance of the connection status singleton
+  //   ConnectionStatusSingleton connectionStatus = ConnectionStatusSingleton.getInstance();
+  //
+  //   // Initialize connection status and start listening
+  //   connectionStatus.initialize();
+  //
+  //   // Await the first value emitted by the connectionChange stream
+  //   bool isConnected = await connectionStatus.connectionChange.first;
+  //
+  //   // Return the status (true or false)
+  //   return isConnected;
+  // }
 
   Future<bool> isConnectedToInternet() async {
     List<ConnectivityResult> results = await Connectivity().checkConnectivity();
@@ -442,23 +467,25 @@ class DatabaseHelper {
         'friends',
         {'status': status, 'synced': 0}, // Mark as unsynced for later synchronization
         where: '(user_id = ? AND friend_id = ?)',
-        whereArgs: [userId, friendId],
+        whereArgs: [friendId, userId],
       );
 
       // Check if the reverse entry exists
       final reverseEntry = await db.query(
         'friends',
         where: '(user_id = ? AND friend_id = ?)',
-        whereArgs: [friendId, userId],
+        whereArgs: [userId, friendId],
       );
-
+      print ("DAH EL REVERSE ENTRY BTA3Y");
+      print(reverseEntry);
       // If the reverse entry doesn't exist, create it
       if (reverseEntry.isEmpty) {
+        print("IS EMPTYYYYYY");
         await db.insert(
           'friends',
           {
-            'user_id': friendId,
-            'friend_id': userId,
+            'user_id': userId,
+            'friend_id': friendId,
             'status': status,
             'synced': 0, // Mark as unsynced for synchronization
           },
@@ -483,7 +510,7 @@ class DatabaseHelper {
           final records = await db.query(
             'friends',
             where: '(user_id = ? AND friend_id = ?)',
-            whereArgs: [userId, friendId],
+            whereArgs: [friendId, userId],
           );
           if (records.isNotEmpty) {
             final friendRequestId = records.first['id'];
@@ -500,13 +527,15 @@ class DatabaseHelper {
           final reverseRecords = await db.query(
             'friends',
             where: '(user_id = ? AND friend_id = ?)',
-            whereArgs: [friendId, userId],
+            whereArgs: [userId, friendId],
           );
+          print("REVERSE RECORDS FIREBASE");
+          print(reverseRecords);
           if (reverseRecords.isNotEmpty) {
             final reverseFriendRequestId = reverseRecords.first['id'];
             await firestore.collection('friends').doc(reverseFriendRequestId.toString()).set({
-              'user_id': friendId,
-              'friend_id': userId,
+              'user_id': userId,
+              'friend_id': friendId,
               'status': status,
               'id': reverseFriendRequestId,
             });
@@ -615,6 +644,12 @@ class DatabaseHelper {
       WHERE f.user_id = ? AND f.status = 'accepted'
     ''', [userId]);
 
+    if (friends.isEmpty) {
+      print("No accepted friends found for userId: $userId");
+    } else {
+      print("Friends list:");
+      print(friends);
+    }
     return friends;
   }
 
@@ -877,7 +912,7 @@ class DatabaseHelper {
           final firestore = FirebaseFirestore.instance;
           final querySnapshot = await firestore
               .collection('events')
-              .where('email', isEqualTo: email)
+              .where('email', isEqualTo: email.toLowerCase())
               .get();
 
           final events = querySnapshot.docs.map((doc) {
@@ -1390,7 +1425,5 @@ class DatabaseHelper {
         }
       }
     });
-
-    // Similarly, set up listeners for other collections if real-time updates are needed
   }
 }

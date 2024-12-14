@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_page.dart';
 import 'sign_up_page.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -13,6 +15,70 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false; // Track password visibility
+
+  Future<void> _checkAndUpdateToken() async {
+    try {
+      // Check if the user is logged in
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print("No user is logged in.");
+        return; // Exit if no user is logged in
+      }
+
+      // Get the user's email
+      String email = user.email ?? '';
+      if (email.isEmpty) {
+        print("User email is empty.");
+        return;
+      }
+
+      // Print the email of the current user
+      print("User Email: $email");
+
+      // Retrieve the FCM token
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
+      String? newFcmToken = await messaging.getToken();
+
+      if (newFcmToken != null) {
+        // Query Firestore to find the user document based on email
+        QuerySnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: email) // Query by email
+            .get();
+
+        if (userSnapshot.docs.isNotEmpty) {
+          DocumentSnapshot userDoc = userSnapshot.docs.single;
+
+          // Print the user document data
+          print("User document data: ${userDoc.data()}");
+
+          // Check if 'fcm_token' exists in the document, or set it if not
+          var userData = userDoc.data() as Map<String, dynamic>;
+          String storedFcmToken = userData['fcm_token'] ?? '';
+          print("Stored token: $storedFcmToken");
+
+          // If the token is different or doesn't exist, update it
+          if (storedFcmToken.isEmpty || storedFcmToken != newFcmToken) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userDoc.id) // Use the Firestore document ID
+                .set({
+              'fcm_token': newFcmToken,
+            }, SetOptions(merge: true)); // Update or create the token field
+            print("FCM Token added/updated.");
+          } else {
+            print("FCM Token is the same. No update needed.");
+          }
+        } else {
+          print("User document not found in Firestore.");
+        }
+      } else {
+        print("FCM Token is null.");
+      }
+    } catch (e) {
+      print("Error updating token: $e");
+    }
+  }
 
   Future<void> _login(BuildContext context) async {
     if (_emailController.text
@@ -43,6 +109,9 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      await _checkAndUpdateToken();
+      print('Added Token');
 
       // Save login state in shared preferences
       final prefs = await SharedPreferences.getInstance();
