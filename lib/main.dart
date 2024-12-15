@@ -1,29 +1,44 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login.dart';
 import 'home_page.dart';
 import 'database_helper.dart';
+import 'connectivity_service.dart';
+import 'notifications.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(HedieatyApp());
+  // Initialize the ConnectivityService before running the app
+  final connectivityService = ConnectivityService();
+  connectivityService
+      .listenToConnectivityChanges(); // Start listening to connectivity changes
+
+  runApp(HedieatyApp(connectivityService));
 }
 
 class HedieatyApp extends StatelessWidget {
+  final ConnectivityService connectivityService;
+
+  HedieatyApp(this.connectivityService);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Hedieaty',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: AppState(),
+      home: AppState(connectivityService: connectivityService),
     );
   }
 }
 
 class AppState extends StatefulWidget {
+  final ConnectivityService connectivityService;
+
+  AppState({required this.connectivityService});
+
   @override
   _AppState createState() => _AppState();
 }
@@ -31,23 +46,36 @@ class AppState extends StatefulWidget {
 class _AppState extends State<AppState> {
   bool isLoggedIn = false;
   String? email;
-  bool isConnected = false;
+  late StreamSubscription<bool> _connectivitySubscription;
+
   final dbHelper = DatabaseHelper();
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
-    // ConnectionStatusSingleton connectionStatus = ConnectionStatusSingleton.getInstance();
-    // connectionStatus.initialize();
     clearDatabase();
-    // Check login status and connectivity when app starts
     checkLoginStatus();
-    listenToConnectivityChanges();
+    synchronizeDatabases();
+    final notificationsHelper = NotificationsHelper();
+    notificationsHelper.initNotifications();
+    notificationsHelper.handleBackgroundNotifications();
+
+    // Listen to connectivity changes globally
+    _connectivitySubscription =
+        widget.connectivityService.connectionStatusStream.listen((isConnected) {
+      // Handle connectivity status changes globally
+      if (isConnected) {
+        print("Connected to the internet.");
+      } else {
+        print("Disconnected from the internet.");
+      }
+      ;
+    });
   }
 
   Future<void> clearDatabase() async {
-    await dbHelper.clearDatabase();  // Assuming you have this method in your DatabaseHelper
+    await dbHelper
+        .clearDatabase(); // Assuming you have this method in your DatabaseHelper
   }
 
   // Check the login status from SharedPreferences
@@ -70,31 +98,10 @@ class _AppState extends State<AppState> {
     }
   }
 
-// Listen for connectivity changes
-  void listenToConnectivityChanges() {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
-      // Check if the list of results contains an internet connection
-      bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
-
-      // If there is a change to a connected state and it was previously not connected
-      if (hasInternet && !isConnected) {
-        print("Connectivity restored. Synchronizing databases...");
-        synchronizeDatabases();
-
-        checkLoginStatus();
-
-      }
-
-      // Update the connectivity status
-      setState(() {
-        isConnected = hasInternet;
-      });
-    });
-  }
-
   // Synchronize data with Firebase
   Future<void> synchronizeDatabases() async {
-    await dbHelper.synchronizeDatabases();  // Sync with local database and Firebase
+    await dbHelper
+        .synchronizeDatabases(); // Sync with local database and Firebase
   }
 
   @override

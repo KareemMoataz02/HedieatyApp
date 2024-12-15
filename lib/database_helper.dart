@@ -64,7 +64,8 @@ class DatabaseHelper {
         phone TEXT UNIQUE NOT NULL,
         imagePath TEXT,
         synced INTEGER DEFAULT 0,
-        token TEXT
+        fcm_token TEXT,
+        notifications INTEGER DEFAULT 0
       )
     ''');
   }
@@ -84,7 +85,7 @@ class DatabaseHelper {
   }
 
   Future<void> _createEventsTable(Database db) async {
-    await db.execute(''' 
+    await db.execute('''
       CREATE TABLE events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -100,7 +101,7 @@ class DatabaseHelper {
   }
 
   Future<void> _createGiftsTable(Database db) async {
-    await db.execute(''' 
+    await db.execute('''
       CREATE TABLE gifts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -117,7 +118,7 @@ class DatabaseHelper {
   }
 
   Future<void> _createPledgesTable(Database db) async {
-    await db.execute(''' 
+    await db.execute('''
       CREATE TABLE pledges (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         userEmail TEXT NOT NULL,
@@ -147,7 +148,8 @@ class DatabaseHelper {
 
   Future<bool> isConnectedToInternet() async {
     List<ConnectivityResult> results = await Connectivity().checkConnectivity();
-    return results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
+    return results.contains(ConnectivityResult.wifi) ||
+        results.contains(ConnectivityResult.mobile);
   }
   // MARK: - Users Operations with Sync
 
@@ -162,7 +164,8 @@ class DatabaseHelper {
       final id = await db.insert(
         'users',
         user,
-        conflictAlgorithm: ConflictAlgorithm.replace, // Replace if user already exists based on email/phone
+        conflictAlgorithm: ConflictAlgorithm
+            .replace, // Replace if user already exists based on email/phone
       );
 
       bool connected = await isConnectedToInternet();
@@ -190,7 +193,7 @@ class DatabaseHelper {
         print("No internet connection. User data will be synced when online.");
       }
 
-      return id;  // Return the ID of the inserted user
+      return id; // Return the ID of the inserted user
     } catch (e) {
       // Handle database insertion errors
       print("Error inserting user into local database: $e");
@@ -198,7 +201,8 @@ class DatabaseHelper {
     }
   }
 
-  Future<Map<String, dynamic>?> getUserByEmailOrPhone(String email, String phone) async {
+  Future<Map<String, dynamic>?> getUserByEmailOrPhone(
+      String email, String phone) async {
     final db = await database;
     final results = await db.query(
       'users',
@@ -219,11 +223,13 @@ class DatabaseHelper {
 
           if (querySnapshot.docs.isNotEmpty) {
             final firebaseUser = querySnapshot.docs.first.data();
-            firebaseUser['id'] = int.parse(querySnapshot.docs.first.id); // Use Firestore doc ID as SQLite id
+            firebaseUser['id'] = int.parse(querySnapshot
+                .docs.first.id); // Use Firestore doc ID as SQLite id
             firebaseUser['synced'] = 1; // Mark as synced
 
             // Insert into local DB
-            await db.insert('users', firebaseUser, conflictAlgorithm: ConflictAlgorithm.replace);
+            await db.insert('users', firebaseUser,
+                conflictAlgorithm: ConflictAlgorithm.replace);
             return firebaseUser;
           }
         } catch (e) {
@@ -270,7 +276,8 @@ class DatabaseHelper {
             // Optionally implement retry logic or mark the record for later synchronization
           }
         } else {
-          print('No internet connection. User update will be synced when online.');
+          print(
+              'No internet connection. User update will be synced when online.');
         }
       } else {
         print('No user found with ID $id.');
@@ -292,7 +299,10 @@ class DatabaseHelper {
       final email = user.first['email'];
       try {
         final firestore = FirebaseFirestore.instance;
-        await firestore.collection('users').doc(id.toString()).delete(); // Sync deletion to Firebase
+        await firestore
+            .collection('users')
+            .doc(id.toString())
+            .delete(); // Sync deletion to Firebase
       } catch (e) {
         print("Error deleting user from Firebase: $e");
         // Optionally implement retry logic or mark the deletion for later synchronization
@@ -322,7 +332,8 @@ class DatabaseHelper {
           user['synced'] = 1; // Mark as synced
 
           if (localUsers.where((u) => u['id'] == user['id']).isEmpty) {
-            await db.insert('users', user, conflictAlgorithm: ConflictAlgorithm.replace);
+            await db.insert('users', user,
+                conflictAlgorithm: ConflictAlgorithm.replace);
           }
         }
       } catch (e) {
@@ -348,14 +359,17 @@ class DatabaseHelper {
       if (connected) {
         try {
           final firestore = FirebaseFirestore.instance;
-          final docSnapshot = await firestore.collection('users').doc(email).get();
+          final docSnapshot =
+              await firestore.collection('users').doc(email).get();
           if (docSnapshot.exists) {
             final firebaseUser = docSnapshot.data()!;
-            firebaseUser['id'] = int.parse(docSnapshot.id); // Use Firestore doc ID as SQLite id
+            firebaseUser['id'] =
+                int.parse(docSnapshot.id); // Use Firestore doc ID as SQLite id
             firebaseUser['synced'] = 1; // Mark as synced
 
             // Insert into local DB
-            await db.insert('users', firebaseUser, conflictAlgorithm: ConflictAlgorithm.replace);
+            await db.insert('users', firebaseUser,
+                conflictAlgorithm: ConflictAlgorithm.replace);
             return firebaseUser;
           }
         } catch (e) {
@@ -389,11 +403,13 @@ class DatabaseHelper {
 
           if (querySnapshot.docs.isNotEmpty) {
             final firebaseUser = querySnapshot.docs.first.data();
-            firebaseUser['id'] = int.parse(querySnapshot.docs.first.id); // Use Firestore doc ID as SQLite id
+            firebaseUser['id'] = int.parse(querySnapshot
+                .docs.first.id); // Use Firestore doc ID as SQLite id
             firebaseUser['synced'] = 1; // Mark as synced
 
             // Insert into local DB
-            await db.insert('users', firebaseUser, conflictAlgorithm: ConflictAlgorithm.replace);
+            await db.insert('users', firebaseUser,
+                conflictAlgorithm: ConflictAlgorithm.replace);
             return firebaseUser;
           }
         } catch (e) {
@@ -457,14 +473,18 @@ class DatabaseHelper {
   }
 
 // Update the status of a friend request and sync to Firebase
-  Future<void> updateFriendRequestStatus(int userId, int friendId, String status) async {
+  Future<void> updateFriendRequestStatus(
+      int userId, int friendId, String status) async {
     final db = await database;
 
     try {
       // Update the original friend request status in the local database
       await db.update(
         'friends',
-        {'status': status, 'synced': 0}, // Mark as unsynced for later synchronization
+        {
+          'status': status,
+          'synced': 0
+        }, // Mark as unsynced for later synchronization
         where: '(user_id = ? AND friend_id = ?)',
         whereArgs: [friendId, userId],
       );
@@ -475,7 +495,7 @@ class DatabaseHelper {
         where: '(user_id = ? AND friend_id = ?)',
         whereArgs: [userId, friendId],
       );
-      print ("DAH EL REVERSE ENTRY BTA3Y");
+      print("DAH EL REVERSE ENTRY BTA3Y");
       print(reverseEntry);
       // If the reverse entry doesn't exist, create it
       if (reverseEntry.isEmpty) {
@@ -493,7 +513,10 @@ class DatabaseHelper {
         // If it exists, just update its status
         await db.update(
           'friends',
-          {'status': status, 'synced': 0}, // Mark as unsynced for later synchronization
+          {
+            'status': status,
+            'synced': 0
+          }, // Mark as unsynced for later synchronization
           where: '(user_id = ? AND friend_id = ?)',
           whereArgs: [friendId, userId],
         );
@@ -513,7 +536,10 @@ class DatabaseHelper {
           );
           if (records.isNotEmpty) {
             final friendRequestId = records.first['id'];
-            await firestore.collection('friends').doc(friendRequestId.toString()).update({'status': status});
+            await firestore
+                .collection('friends')
+                .doc(friendRequestId.toString())
+                .update({'status': status});
             await db.update(
               'friends',
               {'synced': 1},
@@ -532,7 +558,10 @@ class DatabaseHelper {
           print(reverseRecords);
           if (reverseRecords.isNotEmpty) {
             final reverseFriendRequestId = reverseRecords.first['id'];
-            await firestore.collection('friends').doc(reverseFriendRequestId.toString()).set({
+            await firestore
+                .collection('friends')
+                .doc(reverseFriendRequestId.toString())
+                .set({
               'user_id': userId,
               'friend_id': friendId,
               'status': status,
@@ -553,8 +582,6 @@ class DatabaseHelper {
       print('Error updating friend request status: $e');
     }
   }
-
-
 
   Future<List<Map<String, dynamic>>> getFriendRequests(int userId) async {
     final db = await database;
@@ -585,7 +612,8 @@ class DatabaseHelper {
           await db.insert(
             'friends',
             {
-              'id': int.parse(snapshot.docs.first.id), // Use Firestore doc ID as SQLite id
+              'id': int.parse(
+                  snapshot.docs.first.id), // Use Firestore doc ID as SQLite id
               'user_id': request['user_id'],
               'friend_id': request['friend_id'],
               'status': request['status'],
@@ -595,7 +623,10 @@ class DatabaseHelper {
           );
 
           // Fetch associated user details from Firebase if not in the local database
-          var userSnapshot = await firestore.collection('users').doc(request['user_id'].toString()).get();
+          var userSnapshot = await firestore
+              .collection('users')
+              .doc(request['user_id'].toString())
+              .get();
 
           if (userSnapshot.exists) {
             var userData = userSnapshot.data();
@@ -607,7 +638,8 @@ class DatabaseHelper {
                   'username': userData['username'],
                   'email': userData['email'],
                   'phone': userData['phone'],
-                  'password': userData['password'], // Ensure all required fields are included
+                  'password': userData[
+                      'password'], // Ensure all required fields are included
                   'imagePath': userData['imagePath'],
                   'synced': 1,
                 },
@@ -633,7 +665,8 @@ class DatabaseHelper {
     return requests;
   }
 
-  Future<List<Map<String, dynamic>>> getAcceptedFriendsByUserId(int userId) async {
+  Future<List<Map<String, dynamic>>> getAcceptedFriendsByUserId(
+      int userId) async {
     final db = await database;
     // Query that joins the users table on the friend_id and filters by user_id and status 'accepted'
     final List<Map<String, dynamic>> friends = await db.rawQuery('''
@@ -675,19 +708,23 @@ class DatabaseHelper {
 
         final friends = querySnapshot.docs.map((doc) {
           final friendData = doc.data();
-          friendData['id'] = int.parse(doc.id); // Use Firestore doc ID as friend ID
+          friendData['id'] =
+              int.parse(doc.id); // Use Firestore doc ID as friend ID
           return friendData;
         }).toList();
 
         // Sync Firebase data to local database
         for (var friend in friends) {
-          await db.insert('friends', {
-            'id': friend['id'],
-            'user_id': friend['user_id'],
-            'friend_id': friend['friend_id'],
-            'status': friend['status'],
-            'synced': 1,  // Mark as synced after inserting
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
+          await db.insert(
+              'friends',
+              {
+                'id': friend['id'],
+                'user_id': friend['user_id'],
+                'friend_id': friend['friend_id'],
+                'status': friend['status'],
+                'synced': 1, // Mark as synced after inserting
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
 
         return friends;
@@ -740,7 +777,8 @@ class DatabaseHelper {
       );
 
       bool connected = await isConnectedToInternet();
-      if (result.isNotEmpty || (connected && await _checkFirebaseFriendExists(userId, friendId))) {
+      if (result.isNotEmpty ||
+          (connected && await _checkFirebaseFriendExists(userId, friendId))) {
         exists = true;
       }
     } catch (e) {
@@ -796,7 +834,7 @@ class DatabaseHelper {
           // Update the synced flag in the local database after syncing with Firebase
           await db.update(
             'events',
-            {'synced': 1},  // Set the synced flag to 1
+            {'synced': 1}, // Set the synced flag to 1
             where: 'id = ?',
             whereArgs: [eventId],
           );
@@ -849,7 +887,8 @@ class DatabaseHelper {
             // Optionally implement retry logic or mark the record for later synchronization
           }
         } else {
-          print('No internet connection. Event update will be synced when online.');
+          print(
+              'No internet connection. Event update will be synced when online.');
         }
       } else {
         print('No event found with ID $id.');
@@ -868,7 +907,8 @@ class DatabaseHelper {
 
     try {
       // Delete from local database
-      final rowsAffected = await db.delete('events', where: 'id = ?', whereArgs: [id]);
+      final rowsAffected =
+          await db.delete('events', where: 'id = ?', whereArgs: [id]);
 
       bool connected = await isConnectedToInternet();
       if (rowsAffected > 0 && connected) {
@@ -916,13 +956,15 @@ class DatabaseHelper {
 
           final events = querySnapshot.docs.map((doc) {
             final eventData = doc.data();
-            eventData['id'] = int.parse(doc.id); // Use Firestore doc ID as event ID
+            eventData['id'] =
+                int.parse(doc.id); // Use Firestore doc ID as event ID
             return eventData;
           }).toList();
 
           // Sync Firebase data to local database
           for (var event in events) {
-            await db.insert('events', event, conflictAlgorithm: ConflictAlgorithm.replace);
+            await db.insert('events', event,
+                conflictAlgorithm: ConflictAlgorithm.replace);
           }
 
           return events;
@@ -937,6 +979,24 @@ class DatabaseHelper {
     }
 
     return localEvents;
+  }
+
+  Future<String?> getEventOwnerEmail(int eventId) async {
+    final db = await database; // Correct use of await to get the database instance
+    try {
+      final List<Map<String, dynamic>> results = await db.query(
+        'events',
+        columns: ['email'], // Ensure 'email' is the correct column name
+        where: 'id = ?',
+        whereArgs: [eventId],
+      );
+      if (results.isNotEmpty) {
+        return results.first['email'];
+      }
+    } catch (e) {
+      print("Error fetching event owner email: $e");
+    }
+    return null;
   }
 
   Future<Map<String, dynamic>?> getEventById(int eventId) async {
@@ -962,15 +1022,20 @@ class DatabaseHelper {
 
         if (connected) {
           try {
-            final docSnapshot = await firestore.collection('events').doc(eventId.toString()).get();
+            final docSnapshot = await firestore
+                .collection('events')
+                .doc(eventId.toString())
+                .get();
 
             if (docSnapshot.exists) {
               event = docSnapshot.data();
-              event!['id'] = int.parse(docSnapshot.id); // Use Firestore doc ID as event ID
+              event!['id'] =
+                  int.parse(docSnapshot.id); // Use Firestore doc ID as event ID
               event['synced'] = 1; // Mark as synced
 
               // Sync Firebase data to local database
-              await db.insert('events', event, conflictAlgorithm: ConflictAlgorithm.replace);
+              await db.insert('events', event,
+                  conflictAlgorithm: ConflictAlgorithm.replace);
             }
           } catch (e) {
             print("Error fetching event by ID from Firebase: $e");
@@ -1054,7 +1119,8 @@ class DatabaseHelper {
 
         // Sync Firebase data to local database
         for (var gift in gifts) {
-          await db.insert('gifts', gift, conflictAlgorithm: ConflictAlgorithm.replace);
+          await db.insert('gifts', gift,
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
 
         return gifts;
@@ -1090,7 +1156,10 @@ class DatabaseHelper {
       if (rowsAffected > 0 && connected) {
         try {
           final firestore = FirebaseFirestore.instance;
-          await firestore.collection('gifts').doc(gift['id'].toString()).update(gift);
+          await firestore
+              .collection('gifts')
+              .doc(gift['id'].toString())
+              .update(gift);
 
           // Update the synced flag in the local database after syncing with Firebase
           await db.update(
@@ -1154,12 +1223,19 @@ class DatabaseHelper {
       'userEmail': userEmail,
       'giftId': giftId,
       'pledgedAt': DateTime.now().toIso8601String(),
-      'synced': 0,  // Set initial synced flag to 0
+      'synced': 0, // Set initial synced flag to 0
     };
 
     // Insert into local database
     final pledgeId = await db.insert('pledges', pledgeData);
 
+    // Update the status of the gift to 'Pledged'
+    await db.update(
+      'gifts',
+      {'status': 'Pledged'}, // Update the status to 'Pledged'
+      where: 'id = ?', // Only update the gift with the corresponding giftId
+      whereArgs: [giftId],
+    );
     // Sync to Firebase
     bool connected = await isConnectedToInternet();
     if (connected) {
@@ -1170,10 +1246,15 @@ class DatabaseHelper {
           'id': pledgeId, // Ensure Firestore includes the SQLite ID
         });
 
+        // Update the status in Firestore
+        await firestore.collection('gifts').doc(giftId.toString()).update({
+          'status': 'Pledged', // Update the status to 'Pledged'
+        });
+
         // Update the synced flag in the local database after syncing with Firebase
         await db.update(
           'pledges',
-          {'synced': 1},  // Set the synced flag to 1
+          {'synced': 1}, // Set the synced flag to 1
           where: 'id = ?',
           whereArgs: [pledgeId],
         );
@@ -1187,12 +1268,13 @@ class DatabaseHelper {
   }
 
   // Get pledged gifts by user, with Firebase fallback
-  Future<List<Map<String, dynamic>>> getPledgedGiftsByUser(String userEmail) async {
+  Future<List<Map<String, dynamic>>> getPledgedGiftsByUser(
+      String userEmail) async {
     final db = await database;
 
     // Fetch only synced pledges from the local database
-    final localPledges = await db.rawQuery(''' 
-      SELECT g.*, p.pledgedAt
+    final localPledges = await db.rawQuery('''
+      SELECT g.*, p.userEmail, p.pledgedAt
       FROM gifts g
       INNER JOIN pledges p ON g.id = p.giftId
       WHERE p.userEmail = ? AND p.synced = 1 
@@ -1218,13 +1300,15 @@ class DatabaseHelper {
 
         // Sync Firebase data to local database
         for (var pledge in pledges) {
-          await db.insert('pledges', pledge, conflictAlgorithm: ConflictAlgorithm.replace);
+          await db.insert('pledges', pledge,
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
 
         return pledges;
       } catch (e) {
         if (e is FirebaseException && e.code == 'failed-precondition') {
-          print('Firestore index required. Please create the index using the provided URL.');
+          print(
+              'Firestore index required. Please create the index using the provided URL.');
         } else {
           print('Error fetching pledges from Firebase: $e');
         }
@@ -1262,13 +1346,29 @@ class DatabaseHelper {
         whereArgs: [pledgeId],
       );
 
+      // Update the status of the gift to 'Pledged'
+      await db.update(
+        'gifts',
+        {'status': 'Available'}, // Update the status to 'Pledged'
+        where: 'id = ?', // Only update the gift with the corresponding giftId
+        whereArgs: [giftId],
+      );
+
       if (rowsAffected > 0) {
         bool connected = await isConnectedToInternet();
         if (connected) {
           try {
             // Sync the deletion to Firebase using the same ID
             final firestore = FirebaseFirestore.instance;
-            await firestore.collection('pledges').doc(pledgeId.toString()).delete();
+            await firestore
+                .collection('pledges')
+                .doc(pledgeId.toString())
+                .delete();
+
+            // Update the status in Firestore
+            await firestore.collection('gifts').doc(giftId.toString()).update({
+              'status': 'Available', // Update the status to 'Pledged'
+            });
 
             // Optionally, you can mark the deletion as synced, but since it's deleted, no action is needed
           } catch (e) {
@@ -1276,7 +1376,8 @@ class DatabaseHelper {
             // Optionally implement retry logic or mark the record for later synchronization
           }
         } else {
-          print('No internet connection. Pledge deletion will be synced when online.');
+          print(
+              'No internet connection. Pledge deletion will be synced when online.');
         }
       }
 
@@ -1290,7 +1391,8 @@ class DatabaseHelper {
   // MARK: - Synchronization Methods
 
   // Generic method to sync unsynced records from SQLite to Firestore
-  Future<void> syncTableToFirebase(String tableName, String firestoreCollection) async {
+  Future<void> syncTableToFirebase(
+      String tableName, String firestoreCollection) async {
     final db = await database;
 
     // Fetch unsynced records
@@ -1307,7 +1409,8 @@ class DatabaseHelper {
 
     for (var record in unsyncedRecords) {
       try {
-        final docId = record['id'].toString(); // Use SQLite id as Firestore doc ID
+        final docId =
+            record['id'].toString(); // Use SQLite id as Firestore doc ID
         final docRef = firestore.collection(firestoreCollection).doc(docId);
         batch.set(docRef, record);
       } catch (e) {
@@ -1334,7 +1437,8 @@ class DatabaseHelper {
   }
 
   // Generic method to sync records from Firestore to SQLite
-  Future<void> syncTableFromFirebase(String tableName, String firestoreCollection) async {
+  Future<void> syncTableFromFirebase(
+      String tableName, String firestoreCollection) async {
     final db = await database;
     final firestore = FirebaseFirestore.instance;
 
@@ -1394,13 +1498,18 @@ class DatabaseHelper {
 
   // Optional: Listen to Firestore updates in real-time
   void listenToFirebaseUpdates() {
-    FirebaseFirestore.instance.collection('users').snapshots().listen((snapshot) async {
+    FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen((snapshot) async {
       final db = await database;
       for (var change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added || change.type == DocumentChangeType.modified) {
+        if (change.type == DocumentChangeType.added ||
+            change.type == DocumentChangeType.modified) {
           try {
             final data = change.doc.data()!;
-            data['id'] = int.parse(change.doc.id); // Use Firestore doc ID as SQLite id
+            data['id'] =
+                int.parse(change.doc.id); // Use Firestore doc ID as SQLite id
             data['synced'] = 1;
 
             await db.insert(

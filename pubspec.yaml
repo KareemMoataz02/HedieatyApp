@@ -46,6 +46,9 @@ dependencies:
   flutter_staggered_animations: ^1.0.0
   http: ^1.2.2
   firebase_messaging: ^15.1.6
+  dio: ^5.7.0
+  googleapis_auth: ^1.6.0
+  fluttertoast: ^8.2.10
 
 dev_dependencies:
   flutter_test:

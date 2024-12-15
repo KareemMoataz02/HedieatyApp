@@ -62,9 +62,22 @@ class _LoginPageState extends State<LoginPage> {
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(userDoc.id) // Use the Firestore document ID
-                .set({
-              'fcm_token': newFcmToken,
-            }, SetOptions(merge: true)); // Update or create the token field
+                .set(
+                    {
+                  'email': email, // Ensure the email is also part of the data
+                  'id': userData['id'], // Retain other fields like id
+                  'imagePath':
+                      userData['imagePath'], // Retain imagePath if needed
+                  'password': userData['password'], // Retain password if needed
+                  'phone': userData['phone'], // Retain phone number if needed
+                  'synced':
+                      userData['synced'], // Retain synced status if needed
+                  'username': userData['username'], // Retain username if needed
+                  'fcm_token': newFcmToken, // Add/update the FCM token
+                },
+                    SetOptions(
+                        merge:
+                            true)); // Merge to avoid overwriting the other fields
             print("FCM Token added/updated.");
           } else {
             print("FCM Token is the same. No update needed.");
@@ -81,31 +94,27 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login(BuildContext context) async {
-    if (_emailController.text
-        .trim()
-        .isEmpty || _passwordController.text
-        .trim()
-        .isEmpty) {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
       showDialog(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('Validation Error'),
-              content: Text('Please enter both email and password.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('OK'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text('Validation Error'),
+          content: Text('Please enter both email and password.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
             ),
+          ],
+        ),
       );
       return;
     }
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -118,14 +127,31 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('email', _emailController.text.trim());
 
+      User? user = userCredential.user;
+      if(!user!.emailVerified){
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content:
+            Text('Please verify your account and try again.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
       // Navigate to HomePage and pass the email
-      Navigator.pushReplacement(
+      else {Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => HomePage(email: _emailController.text.trim()),
         ),
       );
-    } on FirebaseAuthException catch (e) {
+    } }on FirebaseAuthException catch (e) {
       String errorMessage;
       if (e.code == 'invalid-credential') {
         errorMessage = 'Wrong Email or Password';
@@ -137,76 +163,69 @@ class _LoginPageState extends State<LoginPage> {
 
       showDialog(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('Login Error'),
-              content: Text(errorMessage),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('OK'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text('Login Error'),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
             ),
+          ],
+        ),
       );
     }
   }
 
   Future<void> _resetPassword(BuildContext context) async {
-    if (_emailController.text
-        .trim()
-        .isEmpty) {
+    if (_emailController.text.trim().isEmpty) {
       showDialog(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('Validation Error'),
-              content: Text('Please enter your email to reset your password.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('OK'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text('Validation Error'),
+          content: Text('Please enter your email to reset your password.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
             ),
+          ],
+        ),
       );
       return;
     }
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-          email: _emailController.text.trim());
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: _emailController.text.trim());
 
       showDialog(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('Password Reset'),
-              content: Text(
-                  'Password reset email sent. Please check your inbox.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('OK'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text('Password Reset'),
+          content: Text('Password reset email sent. Please check your inbox.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
             ),
+          ],
+        ),
       );
     } catch (e) {
       showDialog(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('Error'),
-              content: Text(
-                  'Failed to send password reset email. Please try again.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('OK'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content:
+              Text('Failed to send password reset email. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
             ),
+          ],
+        ),
       );
     }
   }
@@ -263,8 +282,9 @@ class _LoginPageState extends State<LoginPage> {
                         prefixIcon: Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isPasswordVisible ? Icons.visibility : Icons
-                                .visibility_off,
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
@@ -278,7 +298,8 @@ class _LoginPageState extends State<LoginPage> {
                     ElevatedButton(
                       onPressed: () => _login(context),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white, backgroundColor: Colors.deepPurple, // Button text color
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.deepPurple, // Button text color
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),

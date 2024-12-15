@@ -21,8 +21,8 @@ class _EventListPageState extends State<EventListPage> {
   int? userid;
   String username = ''; // To store the user's username
   bool isLoading = false; // Loading indicator for async operations
-  bool isOwner = false;  // This will store whether the logged-in user is the owner
-
+  bool isOwner =
+      false; // This will store whether the logged-in user is the owner
 
   @override
   void initState() {
@@ -35,7 +35,8 @@ class _EventListPageState extends State<EventListPage> {
   // Check if the logged-in user is the owner of the event
   Future<void> _checkOwnership() async {
     final prefs = await SharedPreferences.getInstance();
-    final loggedInEmail = prefs.getString('email');  // Get logged-in user's email
+    final loggedInEmail =
+        prefs.getString('email'); // Get logged-in user's email
     if (loggedInEmail != null && loggedInEmail == widget.email) {
       setState(() {
         isOwner = true;
@@ -87,13 +88,13 @@ class _EventListPageState extends State<EventListPage> {
     final event = isEditing
         ? Map<String, dynamic>.from(events[index!]) // Make a mutable copy
         : {
-      'id': null,
-      'name': '',
-      'category': 'Formal',
-      'status': 'Upcoming',
-      'deadline': DateTime.now().toIso8601String(),
-      'email': widget.email,
-    };
+            'id': null,
+            'name': '',
+            'category': 'Formal',
+            'status': 'Upcoming',
+            'deadline': DateTime.now().toIso8601String(),
+            'email': widget.email,
+          };
 
     final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: event['name']);
@@ -115,28 +116,38 @@ class _EventListPageState extends State<EventListPage> {
                   TextFormField(
                     controller: nameController,
                     decoration: InputDecoration(labelText: 'Event Name'),
-                    validator: (value) => value == null || value.isEmpty ? 'Please enter an event name' : null,
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Please enter an event name'
+                        : null,
                   ),
                   DropdownButtonFormField<String>(
                     value: selectedCategory,
                     decoration: InputDecoration(labelText: 'Category'),
-                    items: ['Formal', 'Personal', 'Gathering'].map((String category) {
-                      return DropdownMenuItem(value: category, child: Text(category));
+                    items: ['Formal', 'Personal', 'Gathering']
+                        .map((String category) {
+                      return DropdownMenuItem(
+                          value: category, child: Text(category));
                     }).toList(),
-                    onChanged: (newValue) => setState(() => selectedCategory = newValue),
-                    validator: (value) => value == null ? 'Please select a category' : null,
+                    onChanged: (newValue) =>
+                        setState(() => selectedCategory = newValue),
+                    validator: (value) =>
+                        value == null ? 'Please select a category' : null,
                   ),
                   DropdownButtonFormField<String>(
                     value: selectedStatus,
                     decoration: InputDecoration(labelText: 'Status'),
                     items: ['Upcoming', 'Current', 'Past'].map((String status) {
-                      return DropdownMenuItem(value: status, child: Text(status));
+                      return DropdownMenuItem(
+                          value: status, child: Text(status));
                     }).toList(),
-                    onChanged: (newValue) => setState(() => selectedStatus = newValue),
-                    validator: (value) => value == null ? 'Please select a status' : null,
+                    onChanged: (newValue) =>
+                        setState(() => selectedStatus = newValue),
+                    validator: (value) =>
+                        value == null ? 'Please select a status' : null,
                   ),
                   SizedBox(height: 16),
-                  Text('Deadline: ${DateFormat('yyyy-MM-dd').format(deadline)}'),
+                  Text(
+                      'Deadline: ${DateFormat('yyyy-MM-dd').format(deadline)}'),
                   ElevatedButton(
                     onPressed: () async {
                       final picked = await showDatePicker(
@@ -169,7 +180,7 @@ class _EventListPageState extends State<EventListPage> {
                     'status': selectedStatus,
                     'deadline': deadline.toIso8601String(),
                     'email': widget.email,
-                    'user_id' : userid,
+                    'user_id': userid,
                   };
                   if (isEditing) {
                     setState(() {
@@ -216,7 +227,6 @@ class _EventListPageState extends State<EventListPage> {
     }
   }
 
-
   // Sort events based on selected criterion
   void sortEvents() {
     setState(() {
@@ -243,7 +253,8 @@ class _EventListPageState extends State<EventListPage> {
               sortEvents();
             }),
             items: ['name', 'category', 'status'].map((value) {
-              return DropdownMenuItem(value: value, child: Text('Sort by $value'));
+              return DropdownMenuItem(
+                  value: value, child: Text('Sort by $value'));
             }).toList(),
           ),
         ],
@@ -251,59 +262,61 @@ class _EventListPageState extends State<EventListPage> {
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                final event = events[index];
-                return ListTile(
-                  title: Text(event['name']),
-                  subtitle: Text(
-                    '${event['category']} - ${event['status']} - Deadline: ${DateFormat('yyyy-MM-dd').format(DateTime.parse(event['deadline']))}',
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return ListTile(
+                        title: Text(event['name']),
+                        subtitle: Text(
+                          '${event['category']} - ${event['status']} - Deadline: ${DateFormat('yyyy-MM-dd').format(DateTime.parse(event['deadline']))}',
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GiftListPage(
+                              friendEmail:
+                                  widget.email, // Friend's email or user email
+                              eventName: event['name'], // Event name
+                              eventId: event[
+                                  'id'], // Pass the event ID to fetch related gifts
+                            ),
+                          ),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isOwner)
+                              IconButton(
+                                icon: Icon(Icons.edit),
+                                onPressed: () => showEventForm(index: index),
+                              ),
+                            if (isOwner)
+                              IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () => deleteEvent(index),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GiftListPage(
-                        friendEmail: widget.email, // Friend's email or user email
-                        eventName: event['name'],  // Event name
-                        eventId: event['id'],      // Pass the event ID to fetch related gifts
+                ),
+                if (isOwner)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => showEventForm(),
+                        child: Text('Create New Event'),
                       ),
                     ),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isOwner)
-                        IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () => showEventForm(index: index),
-                      ),
-                      if (isOwner)
-                        IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () => deleteEvent(index),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              ],
             ),
-          ),
-          if (isOwner)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => showEventForm(),
-                child: Text('Create New Event'),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

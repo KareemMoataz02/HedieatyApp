@@ -6,9 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'add_gift_page.dart';
 import 'gift_details_page.dart';
 import 'database_helper.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:http/http.dart' as http;
-
+import 'package:hedieaty/connectivity_service.dart';
+import 'package:hedieaty/notifications.dart';
 
 class GiftListPage extends StatefulWidget {
   final String friendEmail;
@@ -31,94 +30,37 @@ class _GiftListPageState extends State<GiftListPage> {
   bool isLoading = false;
   bool isOwner = false;
   bool isConnected = false;
+  String eventOwner = 'Event Owner';
+  String userToken = 'User Token';
+  String title = "Pledge Notification";
+  String body = "A Friend Has Pledged Your Gift";
+  int userNotifications = 0;
+  String userOwnerId = '';
+
+
   final dbHelper = DatabaseHelper();
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
-  late Timer _internetCheckTimer; // Timer for periodic internet checks
-  late StreamSubscription _connectionChangeStream;
+  late StreamSubscription<bool> _connectivitySubscription;
   @override
   void initState() {
     super.initState();
     _loadGifts();
-    _checkOwnership(); // Check if the user is the owner
+    _checkOwnership(); //
+    _getEventOwnerEmail();
 
-    _checkInitialConnectivity();
-    listenToConnectivityChanges();
-//     ConnectionStatusSingleton connectionStatus = ConnectionStatusSingleton.getInstance();
-//     connectionStatus.initialize();
-//     _connectionChangeStream = connectionStatus.connectionChange.listen(connectionChanged);
-//   }
-//
-//
-//   void connectionChanged(dynamic hasConnection) {
-//     setState(() {
-//       isConnected = hasConnection;
-//     });
+    // Use the singleton instance of ConnectivityService directly
+    _connectivitySubscription =
+        ConnectivityService().connectionStatusStream.listen((isConnected) {
+      setState(() {
+        this.isConnected = isConnected;
+      });
+    });
   }
 
   @override
   void dispose() {
-    _connectionChangeStream.cancel(); // Unsubscribe from the stream
+    // Cancel the connectivity subscription to avoid memory leaks
+    _connectivitySubscription.cancel();
     super.dispose();
-  }
-  //Check initial connectivity status
-  void _checkInitialConnectivity() async {
-    // Correctly handle the list of ConnectivityResults
-    List<ConnectivityResult> results = await Connectivity().checkConnectivity();
-
-    bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
-
-    if (hasInternet) {
-      bool internetAvailable = await _checkInternetConnection();
-      setState(() {
-        isConnected = internetAvailable;
-      });
-    }
-    else {
-      setState(() {
-        isConnected = false;
-      });
-    }
-  }
-  // Listen for connectivity changes
-  void listenToConnectivityChanges(){
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async{
-      // Check if the list of results contains an internet connection
-      bool hasInternet = results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
-      if (hasInternet) {
-        bool internetAvailable = await _checkInternetConnection();
-        setState(() {
-          isConnected = internetAvailable;
-        });
-      }
-      else {
-        setState(() {
-          isConnected = false;
-        });
-      }
-    });
-    // Start a periodic check to ensure internet is available every 30 seconds
-    _internetCheckTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
-      if (kDebugMode) {
-        print("TIMER FIRED");
-      }
-      bool internetAvailable = await _checkInternetConnection();
-      setState(() {
-        isConnected = internetAvailable;
-        if (kDebugMode) {
-          print(isConnected);
-        }
-      });
-    });
-  }
-
-  // Perform a simple HTTP request to check if internet is accessible
-  Future<bool> _checkInternetConnection() async {
-    try {
-      final response = await http.get(Uri.parse('https://www.google.com')).timeout(Duration(seconds: 5));
-      return response.statusCode == 200; // If the response is 200, internet is available
-    } catch (e) {
-      return false; // If an error occurs (e.g., no internet), return false
-    }
   }
 
   // Load gifts with the correct pledged status
@@ -138,7 +80,7 @@ class _GiftListPageState extends State<GiftListPage> {
       final updatedGiftList = await Future.wait(giftList.map((gift) async {
         final pledges = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
         final isPledgedByUser =
-        pledges.any((pledgedGift) => pledgedGift['id'] == gift['id']);
+            pledges.any((pledgedGift) => pledgedGift['id'] == gift['id']);
         return {
           ...gift,
           'status': isPledgedByUser
@@ -159,11 +101,59 @@ class _GiftListPageState extends State<GiftListPage> {
     }
   }
 
+  Future<void> _getEventOwnerEmail() async {
+    try {
+      String? eventOwnerEmail = await dbHelper.getEventOwnerEmail(widget.eventId);
+      if (eventOwnerEmail != null) {
+        print('Event owner email: $eventOwnerEmail');
+        // If you need to do something with the email in your state, like displaying it
+        setState(() {
+          this.eventOwner = eventOwnerEmail;
+          _getEventOwner();
+        });
+      } else {
+        print("No owner found for this event.");
+      }
+    } catch (e) {
+      print("Failed to fetch event owner email: $e");
+    }
+  }
+
+  Future<void> _getEventOwner() async {
+    try {
+      final user = await dbHelper.getUserByEmail(eventOwner);
+      // Check if user is not null and if the user map contains the 'fcm_token' and 'notifications' keys
+      userToken = user?['fcm_token'] ?? ''; // Provide a default value or handle null separately
+      userNotifications = user?['notifications'] ?? 0; // Ensure default false if null
+      userOwnerId = user!['id'].toString();
+      print('Aana user Token');
+      print(userToken);
+      print(userNotifications);
+      print(userOwnerId);
+    } catch (e) {
+      print("Error in _getEventOwner: $e");
+    }
+  }
+
+
+  Future<void> sendNotificationToGiftOwner(String userToken, String title, String body, String userOwnerId) async {
+    if (userNotifications == 1 ) {
+      var notificationsHelper = NotificationsHelper();
+      await notificationsHelper.sendNotifications(
+        fcmToken: userToken,
+        title: title,
+        body: body,
+        userId: userOwnerId,
+        type: "pledge",
+      );
+    }
+  }
+
   // Check if the logged-in user is the owner of the event
   Future<void> _checkOwnership() async {
     final prefs = await SharedPreferences.getInstance();
-    final loggedInEmail = prefs.getString(
-        'email'); // Get logged-in user's email
+    final loggedInEmail =
+        prefs.getString('email'); // Get logged-in user's email
     if (loggedInEmail != null && loggedInEmail == widget.friendEmail) {
       setState(() {
         isOwner = true;
@@ -206,19 +196,34 @@ class _GiftListPageState extends State<GiftListPage> {
     try {
       if (isPledged) {
         // Retrieve all pledges for this gift to check who pledged it
-        final pledgedGifts = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
-        final isPledgedByUser = pledgedGifts.any((pledgedGift) =>
-        pledgedGift['id'] == currentGift['id'] && pledgedGift['userEmail'] == loggedInEmail);
+        final pledgedGifts =
+            await dbHelper.getPledgedGiftsByUser(loggedInEmail.toLowerCase());
+
+        print("PLEDGEDD MENYYY");
+        print(pledgedGifts);
+
+        final isPledgedByUser = pledgedGifts.any((pledgedGift) {
+          print('Checking pledged gift: ${pledgedGift}');
+          print('Current gift ID: ${currentGift['id']}');
+          print('Pledged gift ID: ${pledgedGift['id']}');
+          print('Pledged gift userEmail: ${pledgedGift['userEmail']}');
+
+          return pledgedGift['id'] == currentGift['id'] &&
+              pledgedGift['userEmail'] == loggedInEmail.toLowerCase();
+        });
 
         if (!isPledgedByUser) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Only the original pledger can unpledge this gift.')),
+            SnackBar(
+                content:
+                    Text('Only the original pledger can unpledge this gift.')),
           );
         } else {
           // Remove the pledge since it is confirmed that the current user pledged it
           await dbHelper.removePledge(loggedInEmail, currentGift['id']);
           setState(() {
-            currentGift['status'] = 'Available';  // Update the status of the gift to Available
+            currentGift['status'] =
+                'Available'; // Update the status of the gift to Available
           });
         }
       } else if (!isConnected) {
@@ -228,8 +233,10 @@ class _GiftListPageState extends State<GiftListPage> {
       } else {
         // Pledge the gift if it is not pledged and the device is online
         await dbHelper.insertPledge(loggedInEmail, currentGift['id']);
+        sendNotificationToGiftOwner(userToken, title, body, userOwnerId);
         setState(() {
-          currentGift['status'] = 'Pledged';  // Update the status of the gift to Pledged
+          currentGift['status'] =
+              'Pledged'; // Update the status of the gift to Pledged
         });
       }
     } catch (e) {
@@ -239,17 +246,19 @@ class _GiftListPageState extends State<GiftListPage> {
       );
     } finally {
       setState(() {
-        isLoading = false;  // Ensure isLoading is set to false to hide the progress indicator
+        isLoading =
+            false; // Ensure isLoading is set to false to hide the progress indicator
       });
     }
   }
+
   // Edit the details of an existing gift
   Future<void> editGift(Map<String, dynamic> updatedGift) async {
     try {
       await dbHelper.updateGift(updatedGift);
       setState(() {
-        final index = gifts.indexWhere((gift) =>
-        gift['id'] == updatedGift['id']);
+        final index =
+            gifts.indexWhere((gift) => gift['id'] == updatedGift['id']);
         if (index != -1) {
           gifts[index] = updatedGift;
         }
@@ -271,8 +280,8 @@ class _GiftListPageState extends State<GiftListPage> {
       final giftId = gifts[index]['id']; // Fetch the gift ID
 
       // Check if the gift has any pledges before allowing deletion
-      final pledgedGifts = await dbHelper.getPledgedGiftsByUser(
-          gifts[index]['userEmail']);
+      final pledgedGifts =
+          await dbHelper.getPledgedGiftsByUser(gifts[index]['userEmail']);
 
       if (pledgedGifts.isNotEmpty) {
         print(
@@ -295,7 +304,6 @@ class _GiftListPageState extends State<GiftListPage> {
       print("Error deleting gift: $e");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -324,111 +332,113 @@ class _GiftListPageState extends State<GiftListPage> {
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: gifts.length,
-              itemBuilder: (context, index) {
-                final gift = gifts[index];
-                final giftStatus = gift['status'];
-                final bool isPledged = giftStatus == 'Pledged';
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: gifts.length,
+                    itemBuilder: (context, index) {
+                      final gift = gifts[index];
+                      final giftStatus = gift['status'];
+                      final bool isPledged = giftStatus == 'Pledged';
 
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  child: ListTile(
-                    title: Text(
-                      gift['name'],
-                      style: isPledged
-                          ? TextStyle(
-                          decoration: TextDecoration.lineThrough,
-                          color: Colors.grey)
-                          : TextStyle(),
-                    ),
-                    subtitle: Text(
-                      '${gift['category']} - ${gift['status']}',
-                      style: isPledged
-                          ? TextStyle(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey)
-                          : TextStyle(),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: Duration(milliseconds: 300),
-                          transitionBuilder: (child, animation) {
-                            return ScaleTransition(
-                                scale: animation, child: child);
-                          },
-                          child: IconButton(
-                            key: ValueKey(gift['status']),
-                            icon: Icon(
-                              isPledged
-                                  ? Icons.thumb_down
-                                  : Icons.thumb_up,
-                              color: isPledged ? Colors.red : Colors.green,
-                            ),
-                            onPressed: () {
-                              togglePledge(index);
-                            },
+                      return Card(
+                        margin:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        child: ListTile(
+                          title: Text(
+                            gift['name'],
+                            style: isPledged
+                                ? TextStyle(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: Colors.grey)
+                                : TextStyle(),
                           ),
-                        ),
-                        // Show Edit button only if the logged-in user is the owner
-                        if (isOwner)
-                          IconButton(
-                            icon: Icon(Icons.edit),
-                            onPressed: () {
-                              _showEditDialog(context, gift);
-                            },
+                          subtitle: Text(
+                            '${gift['category']} - ${gift['status']}',
+                            style: isPledged
+                                ? TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey)
+                                : TextStyle(),
                           ),
-                        if (isOwner)
-                          IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () => deleteGift(index),
-                          ),
-                        IconButton(
-                          icon: Icon(Icons.info),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    GiftDetailsPage(gift: gift),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AnimatedSwitcher(
+                                duration: Duration(milliseconds: 300),
+                                transitionBuilder: (child, animation) {
+                                  return ScaleTransition(
+                                      scale: animation, child: child);
+                                },
+                                child: IconButton(
+                                  key: ValueKey(gift['status']),
+                                  icon: Icon(
+                                    isPledged
+                                        ? Icons.thumb_down
+                                        : Icons.thumb_up,
+                                    color:
+                                        isPledged ? Colors.red : Colors.green,
+                                  ),
+                                  onPressed: () {
+                                    togglePledge(index);
+                                  },
+                                ),
                               ),
-                            );
-                          },
+                              // Show Edit button only if the logged-in user is the owner
+                              if (isOwner)
+                                IconButton(
+                                  icon: Icon(Icons.edit),
+                                  onPressed: () {
+                                    _showEditDialog(context, gift);
+                                  },
+                                ),
+                              if (isOwner)
+                                IconButton(
+                                  icon: Icon(Icons.delete),
+                                  onPressed: () => deleteGift(index),
+                                ),
+                              IconButton(
+                                icon: Icon(Icons.info),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          GiftDetailsPage(gift: gift),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      );
+                    },
+                  ),
+                ),
+                if (isOwner)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddGiftPage(eventId: widget.eventId),
+                            ),
+                          ).then((_) {
+                            _loadGifts();
+                          });
+                        },
+                        child: const Text('Create New Gift'),
+                      ),
                     ),
                   ),
-                );
-              },
+              ],
             ),
-          ),
-          if (isOwner)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            AddGiftPage(eventId: widget.eventId),
-                      ),
-                    ).then((_) {
-                      _loadGifts();
-                    });
-                  },
-                  child: const Text('Create New Gift'),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -444,20 +454,21 @@ class _GiftListPageState extends State<GiftListPage> {
       return;
     }
 
-    final TextEditingController nameController = TextEditingController(
-        text: gift['name']);
-    final TextEditingController categoryController = TextEditingController(
-        text: gift['category']);
-    final TextEditingController priceController = TextEditingController(
-        text: gift['price'].toString());
-    String imagePath = gift['imagePath'] ??
-        ''; // Default image path if no image exists.
+    final TextEditingController nameController =
+        TextEditingController(text: gift['name']);
+    final TextEditingController categoryController =
+        TextEditingController(text: gift['category']);
+    final TextEditingController priceController =
+        TextEditingController(text: gift['price'].toString());
+    String imagePath =
+        gift['imagePath'] ?? ''; // Default image path if no image exists.
 
     // Function to pick an image from the gallery or camera
     Future<void> _pickImage() async {
       final picker = ImagePicker();
-      final XFile? pickedFile = await picker.pickImage(source: ImageSource
-          .gallery); // You can change to ImageSource.camera for using camera.
+      final XFile? pickedFile = await picker.pickImage(
+          source: ImageSource
+              .gallery); // You can change to ImageSource.camera for using camera.
 
       if (pickedFile != null) {
         imagePath = pickedFile
@@ -506,8 +517,8 @@ class _GiftListPageState extends State<GiftListPage> {
                   ...gift,
                   'name': nameController.text,
                   'category': categoryController.text,
-                  'price': double.tryParse(priceController.text) ??
-                      gift['price'],
+                  'price':
+                      double.tryParse(priceController.text) ?? gift['price'],
                   'imagePath': imagePath, // Include the updated image path
                 };
                 editGift(
