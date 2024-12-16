@@ -1,20 +1,20 @@
 // gift_list_page.dart
-
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data'; // Import for Uint8List
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'add_gift_page.dart';
 import 'database_helper.dart';
 import 'gift_details_page.dart';
-import 'image_converter.dart'; // Import the ImageConverter class
+import 'image_converter.dart';
 import 'package:hedieaty/connectivity_service.dart';
 import 'package:hedieaty/notifications.dart';
-import 'gift_image.dart'; // Import the GiftImage widget
+import 'gift_image.dart';
 
 class GiftListPage extends StatefulWidget {
   final String friendEmail;
@@ -296,25 +296,38 @@ class _GiftListPageState extends State<GiftListPage> {
   // Delete a gift
   Future<void> deleteGift(int index) async {
     if (index < 0 || index >= gifts.length) {
+      print(index);
       print("Invalid index: $index");
       return;
     }
 
     final dbHelper = DatabaseHelper();
     try {
-      final giftId = gifts[index]['id']; // Fetch the gift ID
+      final gift = gifts[index];
+      print("Deleting gift: $gift"); // Debug print
+
+      final giftId = gift['id']; // Fetch the gift ID
+      final event = await dbHelper.getEventById(widget.eventId); // Await the async call
+      final userEmail = event?['email'];
+      print("Gift ID: $giftId");
+      print("User Email: $userEmail");
+
+      // Proceed only if userEmail is not null
+      if (userEmail == null) {
+        print("Error: userEmail is null for gift ID $giftId");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cannot delete the gift due to missing user information.')),
+        );
+        return;
+      }
 
       // Check if the gift has any pledges before allowing deletion
-      final pledgedGifts =
-      await dbHelper.getPledgedGiftsByUser(gifts[index]['userEmail']);
-
-      if (pledgedGifts.isNotEmpty) {
-        print(
-            "Gift with ID $giftId cannot be deleted because it has been pledged.");
+      if (gift['status'] == 'Pledged') {
+        print("Gift with ID $giftId cannot be deleted because it has been pledged.");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  'Cannot delete the gift as it has been pledged by users.')),
+            content: Text('Cannot delete the gift as it has been pledged by users.'),
+          ),
         );
         return; // Prevent deletion if the gift has pledges
       }
@@ -538,53 +551,100 @@ class _GiftListPageState extends State<GiftListPage> {
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder( // To manage state within the dialog
+        return StatefulBuilder(
+          // To manage state within the dialog
           builder: (context, setStateDialog) {
+            // Define a Form key to manage form state
+            final _formKey = GlobalKey<FormState>();
+
             return AlertDialog(
               title: Text('Edit Gift'),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Display current image if available
-                    base64Image != null && base64Image!.isNotEmpty
-                        ? GiftImage(
-                      base64Image: base64Image,
-                      key: Key('${gift['id']}-${base64Image!}'),
-                    )
-                        : Container(
-                      height: 100,
-                      width: 100,
-                      color: Colors.grey[300],
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: 50,
-                        color: Colors.grey[600],
+                child: Form(
+                  key: _formKey, // Assign the Form key
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Display current image if available
+                      base64Image != null && base64Image!.isNotEmpty
+                          ? GiftImage(
+                        base64Image: base64Image,
+                        key: Key('${gift['id']}-${base64Image!}'),
+                      )
+                          : Container(
+                        height: 100,
+                        width: 100,
+                        color: Colors.grey[300],
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: 50,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 8.0),
-                    // Option to pick a new image
-                    ElevatedButton.icon(
-                      onPressed: () => _pickImage(setStateDialog),
-                      icon: Icon(Icons.photo),
-                      label: Text('Change Image'),
-                    ),
-                    SizedBox(height: 8.0),
-                    // Gift details fields
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(labelText: 'Name'),
-                    ),
-                    TextField(
-                      controller: categoryController,
-                      decoration: InputDecoration(labelText: 'Category'),
-                    ),
-                    TextField(
-                      controller: priceController,
-                      decoration: InputDecoration(labelText: 'Price'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ],
+                      SizedBox(height: 8.0),
+                      // Option to pick a new image
+                      ElevatedButton.icon(
+                        onPressed: () => _pickImage(setStateDialog),
+                        icon: Icon(Icons.photo),
+                        label: Text('Change Image'),
+                      ),
+                      SizedBox(height: 8.0),
+                      // Gift details fields with validation
+                      TextFormField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter the gift name.';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 8.0),
+                      TextFormField(
+                        controller: categoryController,
+                        decoration: InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter the category.';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 8.0),
+                      TextFormField(
+                        controller: priceController,
+                        decoration: InputDecoration(
+                          labelText: 'Price',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          // Allow only numbers and decimal points
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                        ],
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter the price.';
+                          }
+                          final price = double.tryParse(value.trim());
+                          if (price == null) {
+                            return 'Price must be a valid number.';
+                          }
+                          if (price < 0) {
+                            return 'Price cannot be negative.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -594,49 +654,65 @@ class _GiftListPageState extends State<GiftListPage> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    // Validate inputs
-                    if (nameController.text.trim().isEmpty ||
-                        categoryController.text.trim().isEmpty ||
-                        priceController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content:
-                            Text('Please fill in all the fields.')),
-                      );
-                      return;
-                    }
+                    // Validate the form fields
+                    if (_formKey.currentState!.validate()) {
+                      // Trimmed input values
+                      String name = nameController.text.trim();
+                      String category = categoryController.text.trim();
+                      double priceValue = double.parse(priceController.text.trim());
 
-                    // Validate price
-                    final double? priceValue =
-                    double.tryParse(priceController.text.trim());
-                    if (priceValue == null || priceValue < 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Please enter a valid price.')),
-                      );
-                      return;
-                    }
+                      // Validate image if changed
+                      if (base64Image != null && base64Image!.isNotEmpty) {
+                        try {
+                          base64Decode(base64Image!);
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Invalid image data.')),
+                          );
+                          return;
+                        }
+                      }
 
-                    // If image was changed, decode it to ensure validity
-                    if (base64Image != null && base64Image!.isNotEmpty) {
+                      // Prepare the updated gift data
+                      final updatedGift = {
+                        ...gift,
+                        'name': name,
+                        'category': category,
+                        'price': priceValue,
+                        'image_path': base64Image ?? gift['image_path'], // Update 'image_path'
+                      };
+
                       try {
-                        base64Decode(base64Image!);
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Invalid image data.')),
+                        // Show a loading indicator while updating
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => Center(child: CircularProgressIndicator()),
                         );
-                        return;
+
+                        // Update the gift in the database
+                        await editGift(updatedGift);
+
+                        // Dismiss the loading indicator
+                        Navigator.pop(context);
+
+                        // Provide success feedback
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gift updated successfully.')),
+                        );
+
+                        // Navigate back
+                        Navigator.pop(context);
+                      } catch (e) {
+                        // Dismiss the loading indicator if an error occurs
+                        Navigator.pop(context);
+
+                        // Display error message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to update gift: $e')),
+                        );
                       }
                     }
-
-                    final updatedGift = {
-                      ...gift,
-                      'name': nameController.text.trim(),
-                      'category': categoryController.text.trim(),
-                      'price': priceValue,
-                      'image_path': base64Image ?? gift['image_path'], // Update 'image_path'
-                    };
-                    await editGift(updatedGift); // Update the gift in the database
-                    Navigator.pop(context);
                   },
                   child: Text('Save'),
                 ),

@@ -102,45 +102,6 @@ class DatabaseHelper {
   }
 
   Future<void> _createGiftsTable(Database db) async {// Function to get the friend's email by their user_id (friend_id)
-    Future<String?> getEmailById(int id) async {
-      final db = await database;
-      final results = await db.query(
-        'users',
-        where: 'LOWER(email) = LOWER(?)',
-        whereArgs: [id],
-      );
-
-      // If the email is found in the local database
-      if (results.isNotEmpty) {
-        // Explicitly cast to String to match return type
-        return results.first['email'] as String?;
-      }
-      // If not found locally, check Firebase
-      if (results.isEmpty) {
-        bool connected = await isConnectedToInternet();
-        if (connected) {
-          try {
-            final firestore = FirebaseFirestore.instance;
-            final docSnapshot =
-            await firestore.collection('users').doc(id.toString()).get();
-            if (docSnapshot.exists) {
-              final firebaseUser = docSnapshot.data()!;
-              firebaseUser['id'] =
-                  int.parse(docSnapshot.id); // Use Firestore doc ID as SQLite id
-              firebaseUser['synced'] = 1; // Mark as synced
-
-              // Insert into local DB
-              await db.insert('users', firebaseUser,
-                  conflictAlgorithm: ConflictAlgorithm.replace);
-              return firebaseUser['email'];
-            }
-          } catch (e) {
-            print("Error fetching user by email from Firebase: $e");
-            // Optionally handle the error
-          }
-        }
-      }
-    }
     await db.execute('''
       CREATE TABLE gifts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -520,6 +481,7 @@ class DatabaseHelper {
         }
       }
     }
+    return null;
   }
 
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
