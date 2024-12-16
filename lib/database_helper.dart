@@ -1,3 +1,4 @@
+import 'package:bcrypt/bcrypt.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -100,7 +101,46 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> _createGiftsTable(Database db) async {
+  Future<void> _createGiftsTable(Database db) async {// Function to get the friend's email by their user_id (friend_id)
+    Future<String?> getEmailById(int id) async {
+      final db = await database;
+      final results = await db.query(
+        'users',
+        where: 'LOWER(email) = LOWER(?)',
+        whereArgs: [id],
+      );
+
+      // If the email is found in the local database
+      if (results.isNotEmpty) {
+        // Explicitly cast to String to match return type
+        return results.first['email'] as String?;
+      }
+      // If not found locally, check Firebase
+      if (results.isEmpty) {
+        bool connected = await isConnectedToInternet();
+        if (connected) {
+          try {
+            final firestore = FirebaseFirestore.instance;
+            final docSnapshot =
+            await firestore.collection('users').doc(id.toString()).get();
+            if (docSnapshot.exists) {
+              final firebaseUser = docSnapshot.data()!;
+              firebaseUser['id'] =
+                  int.parse(docSnapshot.id); // Use Firestore doc ID as SQLite id
+              firebaseUser['synced'] = 1; // Mark as synced
+
+              // Insert into local DB
+              await db.insert('users', firebaseUser,
+                  conflictAlgorithm: ConflictAlgorithm.replace);
+              return firebaseUser['email'];
+            }
+          } catch (e) {
+            print("Error fetching user by email from Firebase: $e");
+            // Optionally handle the error
+          }
+        }
+      }
+    }
     await db.execute('''
       CREATE TABLE gifts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,8 +193,22 @@ class DatabaseHelper {
   }
   // MARK: - Users Operations with Sync
 
+  String hashPassword(String plainPassword) {
+    final String hashed = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+    return hashed;
+  }
+
+  bool verifyPassword(String plainPassword, String hashedPassword) {
+    return BCrypt.checkpw(plainPassword, hashedPassword);
+  }
+
   Future<int> insertUser(Map<String, dynamic> user) async {
     final db = await database;
+
+    final String hashedPassword = hashPassword(user['password']);
+
+    // Replace plain password with hashed password
+    user['password'] = hashedPassword;
 
     try {
       // Set synced flag to 0 (unsynced) before insertion
@@ -201,6 +255,66 @@ class DatabaseHelper {
     }
   }
 
+  Future<int> updateUserPasswordByEmail(String email, String newPassword) async {
+    final db = await database;
+
+    try {
+      // Hash the new password
+      final String hashedPassword = hashPassword(newPassword);
+
+      // Update the password where email matches
+      int count = await db.update(
+        'users',
+        {'password': hashedPassword, 'synced': 0},
+        where: 'email = ?',
+        whereArgs: [email],
+      );
+
+      if (count > 0) {
+        bool connected = await isConnectedToInternet();
+        if (connected) {
+          try {
+            // Fetch the user document from Firestore
+            QuerySnapshot userSnapshot = await FirebaseFirestore.instance
+                .collection('users')
+                .where('email', isEqualTo: email)
+                .get();
+
+            if (userSnapshot.docs.isNotEmpty) {
+              DocumentSnapshot userDoc = userSnapshot.docs.first;
+
+              // Update the password in Firestore
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userDoc.id)
+                  .update({'password': hashedPassword, 'synced': 1});
+
+              // Update local DB to mark as synced
+              await db.update(
+                'users',
+                {'synced': 1},
+                where: 'email = ?',
+                whereArgs: [email],
+              );
+            }
+          } catch (e) {
+            print('Error syncing password update to Firebase: $e');
+            // Optionally implement retry logic or mark the record for later synchronization
+          }
+        } else {
+          print('No internet connection. Password update will be synced when online.');
+        }
+      } else {
+        print('No user found with email $email.');
+      }
+
+      return count;
+    } catch (e) {
+      print('Error updating user password: $e');
+      return 0; // Indicate failure
+    }
+  }
+
   Future<Map<String, dynamic>?> getUserByEmailOrPhone(
       String email, String phone) async {
     final db = await database;
@@ -239,6 +353,28 @@ class DatabaseHelper {
     }
 
     return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<void> updateFcmTokenInDatabase(String newFcmToken,String email) async {
+    try {
+      final db = await database;
+
+      // Update the user's FCM token in the local database
+      int affectedRows = await db.update(
+        'users',
+        {'fcm_token': newFcmToken}, // The new token to update
+        where: 'email = ?', // The condition to identify the user
+        whereArgs: [email],
+      );
+
+      if (affectedRows > 0) {
+        print("FCM Token updated in SQLite database.");
+      } else {
+        print("No rows updated in SQLite.");
+      }
+    } catch (e) {
+      print("Error updating token in SQLite: $e");
+    }
   }
 
 // Update a user and sync to Firebase
@@ -345,6 +481,47 @@ class DatabaseHelper {
     return await db.query('users');
   }
 
+  // Function to get the friend's email by their user_id (friend_id)
+  Future<String?> getEmailById(int id) async {
+    final db = await database;
+    final results = await db.query(
+      'users',
+      where: 'LOWER(email) = LOWER(?)',
+      whereArgs: [id],
+    );
+
+    // If the email is found in the local database
+    if (results.isNotEmpty) {
+      // Explicitly cast to String to match return type
+      return results.first['email'] as String?;
+    }
+    // If not found locally, check Firebase
+    if (results.isEmpty) {
+      bool connected = await isConnectedToInternet();
+      if (connected) {
+        try {
+          final firestore = FirebaseFirestore.instance;
+          final docSnapshot =
+          await firestore.collection('users').doc(id.toString()).get();
+          if (docSnapshot.exists) {
+            final firebaseUser = docSnapshot.data()!;
+            firebaseUser['id'] =
+                int.parse(docSnapshot.id); // Use Firestore doc ID as SQLite id
+            firebaseUser['synced'] = 1; // Mark as synced
+
+            // Insert into local DB
+            await db.insert('users', firebaseUser,
+                conflictAlgorithm: ConflictAlgorithm.replace);
+            return firebaseUser['email'];
+          }
+        } catch (e) {
+          print("Error fetching user by email from Firebase: $e");
+          // Optionally handle the error
+        }
+      }
+    }
+  }
+
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
     final db = await database;
     final results = await db.query(
@@ -421,6 +598,45 @@ class DatabaseHelper {
 
     return results.isNotEmpty ? results.first : null;
   }
+
+  // database_helper.dart (Additional method)
+
+  /// Updates a user's image by email
+  Future<int> updateUserImageByEmail(String email, String base64Image) async {
+    final db = await database;
+
+    try {
+      int count = await db.update(
+        'users',
+        {'imagePath': base64Image, 'synced': 0}, // Mark as unsynced
+        where: 'email = ?',
+        whereArgs: [email],
+      );
+
+      if (count > 0) {
+        bool connected = await isConnectedToInternet();
+        if (connected) {
+          try {
+            // Optionally, sync the image to Firestore or another backend service
+            // Example: Upload to Firebase Storage and store the URL
+          } catch (e) {
+            print('Error syncing image update to Firebase: $e');
+            // Optionally implement retry logic or mark the record for later synchronization
+          }
+        } else {
+          print('No internet connection. Image update will be synced when online.');
+        }
+      } else {
+        print('No user found with email $email.');
+      }
+
+      return count;
+    } catch (e) {
+      print('Error updating user image: $e');
+      return 0; // Indicate failure
+    }
+  }
+
 
   // MARK: - Friends Operations with Sync
 

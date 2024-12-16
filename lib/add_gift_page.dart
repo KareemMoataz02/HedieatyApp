@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:convert';
+import 'image_converter.dart'; // Make sure the path is correct
 import 'database_helper.dart';
 
 class AddGiftPage extends StatefulWidget {
@@ -19,17 +19,22 @@ class _AddGiftPageState extends State<AddGiftPage> {
   final TextEditingController priceController = TextEditingController();
 
   String giftStatus = 'Available'; // Default gift status
-  File? selectedImage; // To hold the selected image file
+  String? selectedImageBase64; // To hold the Base64 string of the selected image
+
+  final ImageConverter _imageConverter = ImageConverter(); // Instantiate ImageConverter
 
   // Function to pick an image
   Future<void> uploadImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    String? imageString = await _imageConverter.pickAndCompressImageToString();
 
-    if (image != null) {
+    if (imageString != null) {
       setState(() {
-        selectedImage = File(image.path); // Save the image file
+        selectedImageBase64 = imageString; // Save the Base64 string
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image.')),
+      );
     }
   }
 
@@ -51,14 +56,14 @@ class _AddGiftPageState extends State<AddGiftPage> {
     // Convert price to double
     final double priceValue = double.tryParse(price) ?? 0.0;
 
-    if (selectedImage == null) {
+    if (selectedImageBase64 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please upload an image.')),
       );
       return;
     }
 
-    // Save the gift to the database, including the image path
+    // Save the gift to the database, including the Base64 image string
     final dbHelper = DatabaseHelper();
     await dbHelper.insertGift({
       'name': name,
@@ -67,13 +72,12 @@ class _AddGiftPageState extends State<AddGiftPage> {
       'price': priceValue,
       'status': giftStatus,
       'event_id': widget.eventId, // Associate with the current event
-      'image_path': selectedImage!.path, // Save the image file path
+      'image_path': selectedImageBase64!, // Save the Base64 image string
     });
 
     // After saving, pop the screen and return to the previous page
     Navigator.pop(context);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -83,76 +87,78 @@ class _AddGiftPageState extends State<AddGiftPage> {
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: giftNameController,
-              decoration: InputDecoration(labelText: 'Gift Name'),
-            ),
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: 'Description'),
-            ),
-            TextField(
-              controller: categoryController,
-              decoration: InputDecoration(labelText: 'Category'),
-            ),
-            TextField(
-              controller: priceController,
-              decoration: InputDecoration(labelText: 'Price'),
-              keyboardType: TextInputType.number,
-            ),
-            SizedBox(height: 16.0),
+        child: SingleChildScrollView( // To prevent overflow when keyboard appears
+          child: Column(
+            children: [
+              TextField(
+                controller: giftNameController,
+                decoration: InputDecoration(labelText: 'Gift Name'),
+              ),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(labelText: 'Description'),
+              ),
+              TextField(
+                controller: categoryController,
+                decoration: InputDecoration(labelText: 'Category'),
+              ),
+              TextField(
+                controller: priceController,
+                decoration: InputDecoration(labelText: 'Price'),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 16.0),
 
-            // Display the selected image
-            if (selectedImage != null)
-              Image.file(
-                selectedImage!,
-                height: 150,
-                width: 150,
-                fit: BoxFit.cover,
+              // Display the selected image
+              if (selectedImageBase64 != null)
+                Image.memory(
+                  base64Decode(selectedImageBase64!),
+                  height: 150,
+                  width: 150,
+                  fit: BoxFit.cover,
+                ),
+
+              SizedBox(height: 16.0),
+
+              // Upload Image Button
+              ElevatedButton(
+                onPressed: uploadImage, // Call the upload function
+                child: Text('Upload Image'),
+              ),
+              SizedBox(height: 16.0),
+
+              // Gift status Dropdown
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Status:'),
+                  DropdownButton<String>(
+                    value: giftStatus,
+                    items: <String>['Available', 'Pledged']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        giftStatus = newValue!;
+                      });
+                    },
+                  ),
+                ],
               ),
 
-            SizedBox(height: 16.0),
+              SizedBox(height: 24.0),
 
-            // Upload Image Button
-            ElevatedButton(
-              onPressed: uploadImage, // Call the upload function
-              child: Text('Upload Image'),
-            ),
-            SizedBox(height: 16.0),
-
-            // Gift status Dropdown
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Status:'),
-                DropdownButton<String>(
-                  value: giftStatus,
-                  items: <String>['Available', 'Pledged']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      giftStatus = newValue!;
-                    });
-                  },
-                ),
-              ],
-            ),
-
-            SizedBox(height: 24.0),
-
-            // Save Button
-            ElevatedButton(
-              onPressed: saveGift,
-              child: Text('Save Gift'),
-            ),
-          ],
+              // Save Button
+              ElevatedButton(
+                onPressed: saveGift,
+                child: Text('Save Gift'),
+              ),
+            ],
+          ),
         ),
       ),
     );

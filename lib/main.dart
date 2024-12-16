@@ -6,16 +6,54 @@ import 'login.dart';
 import 'home_page.dart';
 import 'database_helper.dart';
 import 'connectivity_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 import 'notifications.dart';
+
+FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+Future<void> initNotifications() async {
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    // iOS: IOSInitializationSettings(),
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+}
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'your_channel_id', // The ID of the channel
+  'your_channel_name', // The name of the channel
+  description: 'Your channel description', // The description of the channel
+  importance: Importance.max, // Importance level
+);
+
+
+void setupNotifications() async {
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+}
+
+Future<void> backgroundMessageHandler(RemoteMessage message) async {
+  // Initialize the local notifications plugin in background
+  await NotificationsHelper.showNotification(message);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  initNotifications(); // Initialize notifications when the app starts
+  setupNotifications();
   // Initialize the ConnectivityService before running the app
   final connectivityService = ConnectivityService();
   connectivityService
       .listenToConnectivityChanges(); // Start listening to connectivity changes
-
+  FirebaseMessaging.onBackgroundMessage(backgroundMessageHandler);
   runApp(HedieatyApp(connectivityService));
 }
 
@@ -56,9 +94,6 @@ class _AppState extends State<AppState> {
     clearDatabase();
     checkLoginStatus();
     synchronizeDatabases();
-    final notificationsHelper = NotificationsHelper();
-    notificationsHelper.initNotifications();
-    notificationsHelper.handleBackgroundNotifications();
 
     // Listen to connectivity changes globally
     _connectivitySubscription =
@@ -70,6 +105,13 @@ class _AppState extends State<AppState> {
         print("Disconnected from the internet.");
       }
       ;
+    });
+
+    // Handle foreground notifications
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print("Foreground notification received: ${message.notification?.title}");
+      // Show notification locally when app is in foreground
+      NotificationsHelper.showNotification(message);
     });
   }
 

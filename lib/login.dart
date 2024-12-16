@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'home_page.dart';
 import 'sign_up_page.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'database_helper.dart'; // Import DatabaseHelper
 
 class LoginPage extends StatefulWidget {
   @override
@@ -12,10 +13,14 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  // Controllers for input fields
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController(); // New controller for phone
   final TextEditingController _passwordController = TextEditingController();
+  final dbHelper = DatabaseHelper();
   bool _isPasswordVisible = false; // Track password visibility
 
+  /// Checks and updates the FCM token in Firestore
   Future<void> _checkAndUpdateToken() async {
     try {
       // Check if the user is logged in
@@ -63,22 +68,14 @@ class _LoginPageState extends State<LoginPage> {
                 .collection('users')
                 .doc(userDoc.id) // Use the Firestore document ID
                 .set(
-                    {
-                  'email': email, // Ensure the email is also part of the data
-                  'id': userData['id'], // Retain other fields like id
-                  'imagePath':
-                      userData['imagePath'], // Retain imagePath if needed
-                  'password': userData['password'], // Retain password if needed
-                  'phone': userData['phone'], // Retain phone number if needed
-                  'synced':
-                      userData['synced'], // Retain synced status if needed
-                  'username': userData['username'], // Retain username if needed
+                {
                   'fcm_token': newFcmToken, // Add/update the FCM token
                 },
-                    SetOptions(
-                        merge:
-                            true)); // Merge to avoid overwriting the other fields
+                SetOptions(
+                    merge:
+                    true)); // Merge to avoid overwriting other fields
             print("FCM Token added/updated.");
+            await dbHelper.updateFcmTokenInDatabase(newFcmToken,email);
           } else {
             print("FCM Token is the same. No update needed.");
           }
@@ -93,141 +90,177 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  /// Handles user login
   Future<void> _login(BuildContext context) async {
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Validation Error'),
-          content: Text('Please enter both email and password.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
-      );
+    String email = _emailController.text.trim();
+    String phone = _phoneController.text.trim();
+    String password = _passwordController.text.trim();
+
+    // Input validation
+    if ((email.isEmpty && phone.isEmpty) || password.isEmpty) {
+      _showAlertDialog("Validation Error", "Please enter email or phone number and password.");
       return;
     }
 
+    // Validate email format if email is provided
+    if (email.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      _showAlertDialog("Validation Error", "Please enter a valid email address.");
+      return;
+    }
+
+    // Validate phone number format if phone is provided
+    if (phone.isNotEmpty && !_isValidPhoneNumber(phone)) {
+      _showAlertDialog("Validation Error", "Enter a valid phone number in +201XXXXXXXXX format.");
+      return;
+    }
+
+    // Instantiate DatabaseHelper
+    final dbHelper = DatabaseHelper();
+
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      UserCredential userCredential;
 
-      await _checkAndUpdateToken();
-      print('Added Token');
+      if (email.isNotEmpty) {
+        // Online login via FirebaseAuth
+        userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
 
-      // Save login state in shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('email', _emailController.text.trim());
+        // Update FCM token in Firestore
+        await _checkAndUpdateToken();
+        print('FCM Token Updated');
 
-      User? user = userCredential.user;
-      if(!user!.emailVerified){
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Error'),
-            content:
-            Text('Please verify your account and try again.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('OK'),
-              ),
-            ],
+        // Save login state in shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('email', email);
+
+        User? user = userCredential.user;
+        if (!user!.emailVerified) {
+          _showAlertDialog("Error", "Please verify your account and try again.");
+        } else {
+          // Update local SQLite with the new password hash
+          await dbHelper.updateUserPasswordByEmail(email, password);
+          // Navigate to HomePage and pass the email
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomePage(email: email),
+            ),
+          );
+        }
+      } else {
+        // Offline login via local SQLite database
+        // Retrieve user by phone number
+        Map<String, dynamic>? user = await dbHelper.getUserByPhone(phone);
+
+        if (user == null) {
+          _showAlertDialog("Login Error", "No user found with the provided phone number.");
+          return;
+        }
+
+        String storedHashedPassword = user['password'];
+        bool isPasswordValid = dbHelper.verifyPassword(password, storedHashedPassword);
+
+        if (!isPasswordValid) {
+          _showAlertDialog("Login Error", "Incorrect password.");
+          return;
+        }
+
+        // Save login state in shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('email', user['email']);
+
+        // Navigate to HomePage and pass the email
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(email: user['email']),
           ),
         );
       }
-      // Navigate to HomePage and pass the email
-      else {Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(email: _emailController.text.trim()),
-        ),
-      );
-    } }on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
       String errorMessage;
-      if (e.code == 'invalid-credential') {
-        errorMessage = 'Wrong Email or Password';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Wrong password provided.';
+      } else if (e.code == 'invalid-credential') {
+        errorMessage = 'Invalid email or password.';
       } else if (e.code == 'invalid-email') {
         errorMessage = 'The email address is not valid.';
       } else {
         errorMessage = 'An error occurred. Please try again.';
       }
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Login Error'),
-          content: Text(errorMessage),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
-      );
+      _showAlertDialog("Login Error", errorMessage);
+    } catch (e) {
+      _showAlertDialog("Error", "An unexpected error occurred: $e");
     }
   }
 
+  /// Resets the user's password
   Future<void> _resetPassword(BuildContext context) async {
-    if (_emailController.text.trim().isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Validation Error'),
-          content: Text('Please enter your email to reset your password.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
-      );
+    String email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      _showAlertDialog("Validation Error", "Please enter your email to reset your password.");
+      return;
+    }
+
+    // Optionally, validate email format
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      _showAlertDialog("Validation Error", "Please enter a valid email address.");
       return;
     }
 
     try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: _emailController.text.trim());
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Password Reset'),
-          content: Text('Password reset email sent. Please check your inbox.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
+      _showAlertDialog(
+        "Password Reset",
+        "Password reset email sent. Please check your inbox.",
       );
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Error'),
-          content:
-              Text('Failed to send password reset email. Please try again.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
+      _showAlertDialog(
+        "Error",
+        "Failed to send password reset email. Please try again.",
       );
     }
+  }
+
+  /// Validates phone number format
+  bool _isValidPhoneNumber(String phone) {
+    final RegExp phoneRegex = RegExp(r'^\+201\d{9}$');
+    return phoneRegex.hasMatch(phone);
+  }
+
+  /// Shows an alert dialog with a title and message
+  Future<void> _showAlertDialog(String title, String message) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    // Dispose controllers to free resources
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -241,8 +274,7 @@ class _LoginPageState extends State<LoginPage> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/background.jpg"),
-            // Add a background image
-            fit: BoxFit.cover,
+            fit: BoxFit.cover, // Add a background image
           ),
         ),
         child: Center(
@@ -259,11 +291,13 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // User Avatar or Logo
                     CircleAvatar(
                       radius: 50,
                       backgroundImage: AssetImage('Assets/gift.jpg'),
                     ),
                     SizedBox(height: 20),
+                    // Email Field
                     TextFormField(
                       controller: _emailController,
                       decoration: InputDecoration(
@@ -271,8 +305,21 @@ class _LoginPageState extends State<LoginPage> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.email),
                       ),
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     SizedBox(height: 20),
+                    // Phone Number Field (Optional)
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Phone +201XXXXXXXXX',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    SizedBox(height: 20),
+                    // Password Field
                     TextFormField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
@@ -295,26 +342,50 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () => _login(context),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.deepPurple, // Button text color
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    // Login Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _login(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple, // Button background color
+                          foregroundColor: Colors.white, // Button text color
+                          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Login',
+                          style: TextStyle(fontSize: 16),
                         ),
                       ),
-                      child: Text('Login'),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => SignUpPage()),
-                        );
-                      },
-                      child: Text('Don\'t have an account? Sign Up'),
+                    SizedBox(height: 10),
+                    // Navigate to Sign Up Page
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("Don't have an account? "),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => SignUpPage()),
+                            );
+                          },
+                          child: Text(
+                            "Sign Up",
+                            style: TextStyle(
+                              color: Colors.deepPurple,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    // Reset Password Button
                     TextButton(
                       onPressed: () => _resetPassword(context),
                       child: Text('Forgot Password?'),

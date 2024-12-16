@@ -1,5 +1,8 @@
+// gift_details_page.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'gift_image.dart'; // Import the GiftImage widget
 
 class GiftDetailsPage extends StatelessWidget {
   final Map<String, dynamic> gift;
@@ -19,12 +22,17 @@ class GiftDetailsPage extends StatelessWidget {
           children: [
             // Gift image or placeholder
             Center(
-              child: CircleAvatar(
-                radius: 80,
-                backgroundImage: gift['image_path'] != null
-                    ? FileImage(File(gift['image_path'])) // Load from URL
-                    : AssetImage('assets/gift.jpg') as ImageProvider, // Default image
-                backgroundColor: Colors.grey[200],
+              child: ClipOval(
+                child: SizedBox(
+                  width: 160, // Desired width
+                  height: 160, // Desired height
+                  child: gift['image_path'] != null && gift['image_path'].isNotEmpty
+                      ? GiftImage(base64Image: gift['image_path'])
+                      : Image.asset(
+                    'assets/gift_placeholder.png', // Ensure you have this asset
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
             ),
             SizedBox(height: 16),
@@ -36,9 +44,9 @@ class GiftDetailsPage extends StatelessWidget {
             _detailDivider(),
             _detailText('Status', gift['status']),
             _detailDivider(),
-            _detailText('Price', gift['price'] != null ? '\$${gift['price']}' : 'N/A'),
+            _detailText(
+                'Price', gift['price'] != null ? '\$${gift['price']}' : 'N/A'),
             _detailDivider(),
-
 
             // Optional description
             if (gift['description'] != null && gift['description'].isNotEmpty)
@@ -74,21 +82,24 @@ class GiftDetailsPage extends StatelessWidget {
 
   // Helper method to display detail text
   Widget _detailText(String label, String? value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        Expanded(
-          child: Text(
-            value ?? 'N/A',
-            textAlign: TextAlign.end,
-            style: TextStyle(fontSize: 20),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0), // Add vertical padding
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-        ),
-      ],
+          Expanded(
+            child: Text(
+              value ?? 'N/A',
+              textAlign: TextAlign.end,
+              style: TextStyle(fontSize: 20),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

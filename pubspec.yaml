@@ -49,6 +49,10 @@ dependencies:
   dio: ^5.7.0
   googleapis_auth: ^1.6.0
   fluttertoast: ^8.2.10
+  image: ^4.3.0
+  flutter_image_converter: ^0.4.1
+  flutter_local_notifications: ^18.0.1
+  googleapis: ^13.2.0
 
 dev_dependencies:
   flutter_test:
