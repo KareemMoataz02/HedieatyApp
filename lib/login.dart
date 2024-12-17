@@ -1,11 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// lib/pages/login_page.dart
+
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hedieaty/services/auth.dart';
+import 'database_helper.dart';
 import 'home_page.dart';
 import 'sign_up_page.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'database_helper.dart'; // Import DatabaseHelper
 
 class LoginPage extends StatefulWidget {
   @override
@@ -15,80 +14,15 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   // Controllers for input fields
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController(); // New controller for phone
+  final TextEditingController _phoneController =
+  TextEditingController(); // New controller for phone
   final TextEditingController _passwordController = TextEditingController();
-  final dbHelper = DatabaseHelper();
   bool _isPasswordVisible = false; // Track password visibility
+  bool _isLoading = false; // Track loading state
 
-  /// Checks and updates the FCM token in Firestore
-  Future<void> _checkAndUpdateToken() async {
-    try {
-      // Check if the user is logged in
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        print("No user is logged in.");
-        return; // Exit if no user is logged in
-      }
+  final AuthService _authService = AuthService(); // Instantiate AuthService
+  final dbHelper = DatabaseHelper();
 
-      // Get the user's email
-      String email = user.email ?? '';
-      if (email.isEmpty) {
-        print("User email is empty.");
-        return;
-      }
-
-      // Print the email of the current user
-      print("User Email: $email");
-
-      // Retrieve the FCM token
-      FirebaseMessaging messaging = FirebaseMessaging.instance;
-      String? newFcmToken = await messaging.getToken();
-
-      if (newFcmToken != null) {
-        // Query Firestore to find the user document based on email
-        QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('email', isEqualTo: email) // Query by email
-            .get();
-
-        if (userSnapshot.docs.isNotEmpty) {
-          DocumentSnapshot userDoc = userSnapshot.docs.single;
-
-          // Print the user document data
-          print("User document data: ${userDoc.data()}");
-
-          // Check if 'fcm_token' exists in the document, or set it if not
-          var userData = userDoc.data() as Map<String, dynamic>;
-          String storedFcmToken = userData['fcm_token'] ?? '';
-          print("Stored token: $storedFcmToken");
-
-          // If the token is different or doesn't exist, update it
-          if (storedFcmToken.isEmpty || storedFcmToken != newFcmToken) {
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(userDoc.id) // Use the Firestore document ID
-                .set(
-                {
-                  'fcm_token': newFcmToken, // Add/update the FCM token
-                },
-                SetOptions(
-                    merge:
-                    true)); // Merge to avoid overwriting other fields
-            print("FCM Token added/updated.");
-            await dbHelper.updateFcmTokenInDatabase(newFcmToken,email);
-          } else {
-            print("FCM Token is the same. No update needed.");
-          }
-        } else {
-          print("User document not found in Firestore.");
-        }
-      } else {
-        print("FCM Token is null.");
-      }
-    } catch (e) {
-      print("Error updating token: $e");
-    }
-  }
 
   /// Handles user login
   Future<void> _login(BuildContext context) async {
@@ -98,106 +32,73 @@ class _LoginPageState extends State<LoginPage> {
 
     // Input validation
     if ((email.isEmpty && phone.isEmpty) || password.isEmpty) {
-      _showAlertDialog("Validation Error", "Please enter email or phone number and password.");
+      _showAlertDialog("Validation Error",
+          "Please enter email or phone number and password.");
       return;
     }
 
     // Validate email format if email is provided
     if (email.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-      _showAlertDialog("Validation Error", "Please enter a valid email address.");
+      _showAlertDialog(
+          "Validation Error", "Please enter a valid email address.");
       return;
     }
 
     // Validate phone number format if phone is provided
-    if (phone.isNotEmpty && !_isValidPhoneNumber(phone)) {
-      _showAlertDialog("Validation Error", "Enter a valid phone number in +201XXXXXXXXX format.");
+    if (phone.isNotEmpty && !_authService.isValidPhoneNumber(phone)) {
+      _showAlertDialog("Validation Error",
+          "Enter a valid phone number in +201XXXXXXXXX format.");
       return;
     }
 
-    // Instantiate DatabaseHelper
-    final dbHelper = DatabaseHelper();
+    setState(() {
+      _isLoading = true;
+    });
 
-    try {
-      UserCredential userCredential;
+    String? loginError;
 
-      if (email.isNotEmpty) {
-        // Online login via FirebaseAuth
-        userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+    if (email.isNotEmpty) {
+      // Online login via AuthService
+      loginError = await _authService.loginWithEmail(
+        email: email,
+        password: password,
+      );
 
-        // Update FCM token in Firestore
-        await _checkAndUpdateToken();
-        print('FCM Token Updated');
-
-        // Save login state in shared preferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('email', email);
-
-        User? user = userCredential.user;
-        if (!user!.emailVerified) {
-          _showAlertDialog("Error", "Please verify your account and try again.");
-        } else {
-          // Update local SQLite with the new password hash
-          await dbHelper.updateUserPasswordByEmail(email, password);
-          // Navigate to HomePage and pass the email
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomePage(email: email),
-            ),
-          );
-        }
-      } else {
-        // Offline login via local SQLite database
-        // Retrieve user by phone number
-        Map<String, dynamic>? user = await dbHelper.getUserByPhone(phone);
-
-        if (user == null) {
-          _showAlertDialog("Login Error", "No user found with the provided phone number.");
-          return;
-        }
-
-        String storedHashedPassword = user['password'];
-        bool isPasswordValid = dbHelper.verifyPassword(password, storedHashedPassword);
-
-        if (!isPasswordValid) {
-          _showAlertDialog("Login Error", "Incorrect password.");
-          return;
-        }
-
-        // Save login state in shared preferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('email', user['email']);
-
-        // Navigate to HomePage and pass the email
+      if (loginError == null) {
+        // Navigate to HomePage
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomePage(email: user['email']),
+            builder: (context) => HomePage(email: email),
           ),
         );
       }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      if (e.code == 'user-not-found') {
-        errorMessage = 'No user found for that email.';
-      } else if (e.code == 'wrong-password') {
-        errorMessage = 'Wrong password provided.';
-      } else if (e.code == 'invalid-credential') {
-        errorMessage = 'Invalid email or password.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is not valid.';
-      } else {
-        errorMessage = 'An error occurred. Please try again.';
-      }
+    } else {
+      // Offline login via AuthService
+      loginError = await _authService.loginWithPhone(
+        phone: phone,
+        password: password,
+      );
 
-      _showAlertDialog("Login Error", errorMessage);
-    } catch (e) {
-      _showAlertDialog("Error", "An unexpected error occurred: $e");
+      if (loginError == null) {
+        // Retrieve user email from local SQLite
+        var user = await dbHelper.getUserByPhone(phone);
+        // Navigate to HomePage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(email: user?['email']),
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (loginError != null) {
+      _showAlertDialog("Login Error", loginError);
     }
   }
 
@@ -206,35 +107,36 @@ class _LoginPageState extends State<LoginPage> {
     String email = _emailController.text.trim();
 
     if (email.isEmpty) {
-      _showAlertDialog("Validation Error", "Please enter your email to reset your password.");
+      _showAlertDialog("Validation Error",
+          "Please enter your email to reset your password.");
       return;
     }
 
     // Optionally, validate email format
     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-      _showAlertDialog("Validation Error", "Please enter a valid email address.");
+      _showAlertDialog(
+          "Validation Error", "Please enter a valid email address.");
       return;
     }
 
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    setState(() {
+      _isLoading = true;
+    });
 
+    String? resetError = await _authService.resetPassword(email: email);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (resetError != null) {
+      _showAlertDialog("Error", resetError);
+    } else {
       _showAlertDialog(
         "Password Reset",
         "Password reset email sent. Please check your inbox.",
       );
-    } catch (e) {
-      _showAlertDialog(
-        "Error",
-        "Failed to send password reset email. Please try again.",
-      );
     }
-  }
-
-  /// Validates phone number format
-  bool _isValidPhoneNumber(String phone) {
-    final RegExp phoneRegex = RegExp(r'^\+201\d{9}$');
-    return phoneRegex.hasMatch(phone);
   }
 
   /// Shows an alert dialog with a title and message
@@ -273,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage("assets/background.jpg"),
+            image: AssetImage("Assets/background.jpg"),
             fit: BoxFit.cover, // Add a background image
           ),
         ),
@@ -343,14 +245,19 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 20),
                     // Login Button
-                    SizedBox(
+                    _isLoading
+                        ? CircularProgressIndicator()
+                        : SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () => _login(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple, // Button background color
-                          foregroundColor: Colors.white, // Button text color
-                          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          backgroundColor:
+                          Colors.deepPurple, // Button background color
+                          foregroundColor:
+                          Colors.white, // Button text color
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -371,7 +278,8 @@ class _LoginPageState extends State<LoginPage> {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => SignUpPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => SignUpPage()),
                             );
                           },
                           child: Text(

@@ -1,12 +1,10 @@
-// sign_up_page.dart
+// lib/pages/sign_up_page.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'database_helper.dart';
+import 'package:hedieaty/services/auth.dart';
 import 'login.dart';
-import 'image_converter.dart'; // Import ImageConverter
+import '../services/image_converter.dart'; // Import ImageConverter
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -15,71 +13,63 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   // Controllers for input fields
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController(); // Confirm password
-  final _usernameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+  TextEditingController(); // Confirm password
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   String? _base64Image; // Selected and converted profile image as Base64 string
   bool _isPasswordVisible = false; // State to track password visibility
-  bool _isConfirmPasswordVisible = false; // State to track confirm password visibility
+  bool _isConfirmPasswordVisible =
+  false; // State to track confirm password visibility
   bool _isLoading = false; // State to track loading during sign-up
 
-  final ImageConverter _imageConverter = ImageConverter(); // Instantiate ImageConverter
-  final DatabaseHelper _dbHelper = DatabaseHelper(); // Instantiate DatabaseHelper
+  final AuthService _authService =
+  AuthService(); // Instantiate AuthService
+  final ImageConverter _imageConverter =
+  ImageConverter(); // Instantiate ImageConverter
 
   /// Picks an image using ImageConverter
   Future<void> _pickImage() async {
-    try {
-      final imageString = await _imageConverter.pickAndCompressImageToString();
-      if (imageString != null) {
-        setState(() {
-          _base64Image = imageString;
-        });
-      } else {
-        _showAlertDialog("Error", "Failed to pick and compress image.");
-      }
-    } catch (e) {
-      debugPrint("ImageConverter error: $e");
-      _showAlertDialog("Error", "An unexpected error occurred while picking the image.");
+    setState(() {
+      _isLoading = true;
+    });
+
+    String? imageBase64 = await _imageConverter.pickAndCompressImageToString();
+    if (imageBase64 != null) {
+      setState(() {
+        _base64Image = imageBase64;
+      });
+    } else {
+      _showAlertDialog("Error", "Failed to pick and compress image.");
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
-  /// Validates input fields
+  /// Validates input fields using AuthService
   String? _validateFields() {
-    if (_usernameController.text.isEmpty) return "Username is required.";
-    if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
-      return "Enter a valid email.";
-    }
-    if (_passwordController.text.isEmpty || _passwordController.text.length < 6) {
-      return "Password must be at least 6 characters.";
-    }
-    if (_passwordController.text != _confirmPasswordController.text) {
-      return "Passwords do not match.";
-    }
-    if (_phoneController.text.isEmpty || !_isValidPhoneNumber(_phoneController.text)) {
-      return "Enter a valid phone number in +201XXXXXXXXX format.";
-    }
-    if (_base64Image == null || _base64Image!.isEmpty) {
-      return "Please upload a profile image.";
-    }
-    return null;
+    return _authService.validateFields(
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+      confirmPassword: _confirmPasswordController.text.trim(),
+      phone: _phoneController.text.trim(),
+      base64Image: _base64Image,
+    );
   }
 
-  /// Validates phone number format
-  bool _isValidPhoneNumber(String phone) {
-    final RegExp phoneRegex = RegExp(r'^\+201\d{9}$');
-    return phoneRegex.hasMatch(phone);
-  }
-
-  /// Sign up process with phone verification
+  /// Sign up process by calling AuthService
   Future<void> _signUp() async {
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
-    final imageBase64 = _base64Image ?? '';
+    final confirmPassword = _confirmPasswordController.text.trim();
 
     final validationError = _validateFields();
     if (validationError != null) {
@@ -87,130 +77,38 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    if (_base64Image == null || _base64Image!.isEmpty) {
+      _showAlertDialog("Error", "Please upload a profile image.");
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    // Check if the user already exists
-    final existingUser = await _dbHelper.getUserByEmailOrPhone(email, phone);
-    if (existingUser != null) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showAlertDialog("Error", "Email or phone number already in use.");
-      return;
-    }
-
-    // Verify phone number
-    _verifyPhoneNumber(phone, () async {
-      try {
-        // Firebase Authentication
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-
-        final user = userCredential.user;
-        if (user == null) {
-          throw Exception("Failed to create user.");
-        }
-
-        await user.updateDisplayName(username);
-
-        // Insert user into the local database using createUser (which hashes the password)
-        await _dbHelper.insertUser({
-          'username': username,
-          'email': email,
-          'password': password, // Plain password; createUser will hash it
-          'phone': phone,
-          'imagePath': imageBase64, // Store Base64 string
-        });
-
-        await user.sendEmailVerification();
-        _showAlertDialog(
-          "Success",
-          "A verification email has been sent to $email. Please verify before logging in.",
-          isSuccess: true,
-        );
-      } on FirebaseAuthException catch (e) {
-        String errorMessage;
-        if (e.code == 'email-already-in-use') {
-          errorMessage = 'This email is already in use.';
-        } else if (e.code == 'weak-password') {
-          errorMessage = 'The password is too weak.';
-        } else {
-          errorMessage = 'An error occurred. Please try again.';
-        }
-        _showAlertDialog("Sign Up Error", errorMessage);
-      } catch (e) {
-        _showAlertDialog("Error", "An unexpected error occurred: $e");
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    });
-  }
-
-  /// Verify phone number using Firebase
-  void _verifyPhoneNumber(String phoneNumber, Function onVerificationSuccess) {
-    FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        // Automatically sign in when verification completes
-        await FirebaseAuth.instance.signInWithCredential(credential);
-        onVerificationSuccess();
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        String errorMessage = e.message ?? "Phone verification failed.";
-        _showAlertDialog("Verification Error", errorMessage);
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        _showCodeInputDialog(verificationId, onVerificationSuccess);
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
-  }
-
-  /// Show dialog to enter verification code
-  void _showCodeInputDialog(String verificationId,
-      Function onVerificationSuccess) {
-    final codeController = TextEditingController();
-
-    showDialog(
+    String? signUpError = await _authService.signUp(
+      username: username,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+      phone: phone,
+      base64Image: _base64Image!,
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Enter Verification Code"),
-          content: TextField(
-            controller: codeController,
-            decoration: InputDecoration(labelText: "Verification Code"),
-            keyboardType: TextInputType.number,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                final code = codeController.text.trim();
-                if (code.isEmpty) {
-                  _showAlertDialog("Error", "Verification code cannot be empty.");
-                  return;
-                }
-                try {
-                  PhoneAuthCredential credential = PhoneAuthProvider.credential(
-                    verificationId: verificationId,
-                    smsCode: code,
-                  );
-                  await FirebaseAuth.instance.signInWithCredential(credential);
-                  Navigator.of(context).pop(); // Close the dialog
-                  onVerificationSuccess();
-                } catch (e) {
-                  _showAlertDialog("Error", "Invalid verification code.");
-                }
-              },
-              child: Text("Verify"),
-            ),
-          ],
-        );
-      },
     );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (signUpError != null) {
+      _showAlertDialog("Sign Up Error", signUpError);
+    } else {
+      _showAlertDialog(
+        "Success",
+        "A verification email has been sent to $email. Please verify before logging in.",
+        isSuccess: true,
+      );
+    }
   }
 
   /// Show an alert dialog
@@ -264,11 +162,12 @@ class _SignUpPageState extends State<SignUpPage> {
           children: [
             // Profile Image Picker
             GestureDetector(
-              onTap: _pickImage,
+              onTap: _pickImage, // Handle image picking on tap
               child: CircleAvatar(
                 radius: 60,
                 backgroundColor: Colors.grey[300],
-                backgroundImage: _base64Image != null && _base64Image!.isNotEmpty
+                backgroundImage:
+                _base64Image != null && _base64Image!.isNotEmpty
                     ? MemoryImage(base64Decode(_base64Image!))
                     : AssetImage('assets/logo.jpeg') as ImageProvider,
                 child: _base64Image == null || _base64Image!.isEmpty
@@ -282,13 +181,11 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             SizedBox(height: 20),
             // Username Field
-            _buildTextField(
-                _usernameController, 'Username', Icons.person,
+            _buildTextField(_usernameController, 'Username', Icons.person,
                 keyboardType: TextInputType.text),
             SizedBox(height: 10),
             // Email Field
-            _buildTextField(
-                _emailController, 'Email', Icons.email,
+            _buildTextField(_emailController, 'Email', Icons.email,
                 keyboardType: TextInputType.emailAddress),
             SizedBox(height: 10),
             // Password Field
@@ -310,9 +207,12 @@ class _SignUpPageState extends State<SignUpPage> {
               child: ElevatedButton(
                 onPressed: () => _signUp(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple, // Button background color
-                  foregroundColor: Colors.white, // Button text color
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  backgroundColor:
+                  Colors.deepPurple, // Button background color
+                  foregroundColor:
+                  Colors.white, // Button text color
+                  padding:
+                  EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -354,8 +254,9 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   /// Builds a generic text field
-  Widget _buildTextField(TextEditingController controller, String label,
-      IconData icon, {TextInputType? keyboardType}) {
+  Widget _buildTextField(
+      TextEditingController controller, String label, IconData icon,
+      {TextInputType? keyboardType}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: TextField(
@@ -382,7 +283,8 @@ class _SignUpPageState extends State<SignUpPage> {
           prefixIcon: Icon(Icons.lock),
           suffixIcon: IconButton(
             icon: Icon(
-                _isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+              _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            ),
             onPressed: () {
               setState(() {
                 _isPasswordVisible = !_isPasswordVisible;
@@ -407,7 +309,10 @@ class _SignUpPageState extends State<SignUpPage> {
           prefixIcon: Icon(Icons.lock_outline),
           suffixIcon: IconButton(
             icon: Icon(
-                _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off),
+              _isConfirmPasswordVisible
+                  ? Icons.visibility
+                  : Icons.visibility_off,
+            ),
             onPressed: () {
               setState(() {
                 _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
