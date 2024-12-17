@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'gift_image.dart'; // Import the GiftImage widget
+import '../services/gift_image.dart'; // Import the GiftImage widget
 
 class GiftDetailsPage extends StatelessWidget {
   final Map<String, dynamic> gift;

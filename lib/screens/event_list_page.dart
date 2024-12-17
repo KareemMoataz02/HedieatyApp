@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; // Assume you have a DatabaseHelper for CRUD operations
+import 'package:hedieaty/models/event_model.dart';
+import '../services/database_helper.dart'; // Assume you have a DatabaseHelper for CRUD operations
 import 'gift_list_page.dart'; // Import GiftListPage
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/user_model.dart';
 
 class EventListPage extends StatefulWidget {
   final String email;
@@ -48,8 +51,8 @@ class _EventListPageState extends State<EventListPage> {
   Future<void> _loadUsername() async {
     setState(() => isLoading = true);
     try {
-      final dbHelper = DatabaseHelper();
-      final user = await dbHelper.getUserByEmail(widget.email);
+      final userModel = UserModel();
+      final user = await userModel.getUserByEmail(widget.email);
       username = user?['username'] ?? 'User';
       userid = user?['id'];
       print("ANA EL USER ID");
@@ -65,8 +68,8 @@ class _EventListPageState extends State<EventListPage> {
   Future<void> _loadEvents() async {
     setState(() => isLoading = true);
     try {
-      final dbHelper = DatabaseHelper();
-      events = await dbHelper.getEventsByEmail(widget.email.toLowerCase());
+      final EventModel eventModel = EventModel();
+      events = await eventModel.getEventsByEmail(widget.email.toLowerCase());
       print("ANA EVENTS");
       print(events);
     } catch (e) {
@@ -78,8 +81,8 @@ class _EventListPageState extends State<EventListPage> {
 
   // Update a specific event in the database
   Future<void> _updateEventInDb(Map<String, dynamic> updatedEvent) async {
-    final dbHelper = DatabaseHelper();
-    await dbHelper.updateEvent(updatedEvent['id'], updatedEvent);
+    final EventModel eventModel = EventModel();
+    await eventModel.updateEvent(updatedEvent['id'], updatedEvent);
   }
 
 // Show event form (create or edit)
@@ -188,8 +191,8 @@ class _EventListPageState extends State<EventListPage> {
                     });
                     await _updateEventInDb(updatedEvent); // Update in DB
                   } else {
-                    final dbHelper = DatabaseHelper();
-                    final newId = await dbHelper.insertEvent(updatedEvent);
+                    final EventModel eventModel = EventModel();
+                    final newId = await eventModel.insertEvent(updatedEvent);
                     updatedEvent['id'] = newId;
                     setState(() {
                       events.add(updatedEvent); // Add to mutable list
@@ -213,10 +216,10 @@ class _EventListPageState extends State<EventListPage> {
       return;
     }
 
-    final dbHelper = DatabaseHelper();
+    final EventModel eventModel = EventModel();
     try {
       final eventId = events[index]['id'];
-      await dbHelper.deleteEvent(eventId);
+      await eventModel.deleteEvent(eventId);
       setState(() {
         // Modify the mutable events list
         events = List.from(events)..removeAt(index);

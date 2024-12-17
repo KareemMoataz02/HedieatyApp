@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hedieaty/services/auth.dart';
 import 'login.dart';
-import '../services/image_converter.dart'; // Import ImageConverter
+import '../../services/image_converter.dart'; // Import ImageConverter
 
 class SignUpPage extends StatefulWidget {
   @override

@@ -2,8 +2,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart'; // For input formatters
-import 'image_converter.dart'; // Ensure the path is correct
-import 'database_helper.dart';
+import 'package:hedieaty/models/gift_model.dart';
+import '../services/image_converter.dart'; // Ensure the path is correct
+import '../services/database_helper.dart';
 
 class AddGiftPage extends StatefulWidget {
   final int eventId; // Event ID to associate with the gift
@@ -86,7 +87,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
       };
 
       // Save the gift to the database
-      final dbHelper = DatabaseHelper(); // Use singleton instance
+      final giftModel = GiftModel(); // Use singleton instance
 
       try {
         // Show a loading indicator while saving
@@ -94,7 +95,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
           isLoading = true;
         });
 
-        await dbHelper.insertGift(newGift);
+        await giftModel.insertGift(newGift);
 
         // Hide the loading indicator
         setState(() {

@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:hedieaty/services/auth.dart';
-import 'database_helper.dart';
+import '../services/database_helper.dart';
 import 'home_page.dart';
+import '../models/user_model.dart';
 import 'sign_up_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -22,6 +23,8 @@ class _LoginPageState extends State<LoginPage> {
 
   final AuthService _authService = AuthService(); // Instantiate AuthService
   final dbHelper = DatabaseHelper();
+  final userModel = UserModel();
+
 
 
   /// Handles user login
@@ -82,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (loginError == null) {
         // Retrieve user email from local SQLite
-        var user = await dbHelper.getUserByPhone(phone);
+        var user = await userModel.getUserByPhone(phone);
         // Navigate to HomePage
         Navigator.pushReplacement(
           context,

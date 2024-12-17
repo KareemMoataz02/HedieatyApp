@@ -1,20 +1,22 @@
 // gift_list_page.dart
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:hedieaty/models/gift_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'add_gift_page.dart';
-import 'database_helper.dart';
+import '../services/database_helper.dart';
 import 'gift_details_page.dart';
-import 'image_converter.dart';
-import 'package:hedieaty/connectivity_service.dart';
-import 'package:hedieaty/notifications.dart';
-import 'gift_image.dart';
+import '../services/image_converter.dart';
+import 'package:hedieaty/services/connectivity_service.dart';
+import '../services/notifications.dart';
+import '../services/gift_image.dart';
+import '../models/event_model.dart';
+import '../models/pledged_gift_model.dart';
+import '../models/user_model.dart';
 
 class GiftListPage extends StatefulWidget {
   final String friendEmail;
@@ -45,6 +47,12 @@ class _GiftListPageState extends State<GiftListPage> {
   String userOwnerId = '';
 
   final dbHelper = DatabaseHelper();
+  final userModel = UserModel();
+  final eventModel = EventModel();
+  final giftModel = GiftModel();
+  final pledgeModel = PledgeModel();
+
+
   late StreamSubscription<bool> _connectivitySubscription;
   final ImageConverter _imageConverter = ImageConverter(); // Instantiate ImageConverter
 
@@ -77,7 +85,7 @@ class _GiftListPageState extends State<GiftListPage> {
       isLoading = true;
     });
     try {
-      final giftList = await dbHelper.getGiftsByEventId(widget.eventId);
+      final giftList = await giftModel.getGiftsByEventId(widget.eventId);
 
       // Fetch logged-in user's email
       final prefs = await SharedPreferences.getInstance();
@@ -85,7 +93,7 @@ class _GiftListPageState extends State<GiftListPage> {
 
       // Check if each gift is pledged by the logged-in user
       final updatedGiftList = await Future.wait(giftList.map((gift) async {
-        final pledges = await dbHelper.getPledgedGiftsByUser(loggedInEmail);
+        final pledges = await pledgeModel.getPledgedGiftsByUser(loggedInEmail);
         final isPledgedByUser =
         pledges.any((pledgedGift) => pledgedGift['id'] == gift['id']);
         return {
@@ -114,7 +122,7 @@ class _GiftListPageState extends State<GiftListPage> {
   Future<void> _getEventOwnerEmail() async {
     try {
       String? eventOwnerEmail =
-      await dbHelper.getEventOwnerEmail(widget.eventId);
+      await eventModel.getEventOwnerEmail(widget.eventId);
       if (eventOwnerEmail != null) {
         print('Event owner email: $eventOwnerEmail');
         setState(() {
@@ -153,7 +161,7 @@ class _GiftListPageState extends State<GiftListPage> {
 
   Future<void> _getEventOwner() async {
     try {
-      final user = await dbHelper.getUserByEmail(eventOwner);
+      final user = await userModel.getUserByEmail(eventOwner);
       userNotifications = user?['notifications'] ?? 0;
       userOwnerId = user?['id'].toString() ?? '';
       userToken = await getFcmTokenFromFirestore(userOwnerId) ?? '';
@@ -226,7 +234,7 @@ class _GiftListPageState extends State<GiftListPage> {
       if (isPledged) {
         // Retrieve all pledges for this gift to check who pledged it
         final pledgedGifts =
-        await dbHelper.getPledgedGiftsByUser(loggedInEmail.toLowerCase());
+        await pledgeModel.getPledgedGiftsByUser(loggedInEmail.toLowerCase());
 
         final isPledgedByUser = pledgedGifts.any((pledgedGift) {
           return pledgedGift['id'] == currentGift['id'] &&
@@ -242,7 +250,7 @@ class _GiftListPageState extends State<GiftListPage> {
           );
         } else {
           // Remove the pledge since it is confirmed that the current user pledged it
-          await dbHelper.removePledge(loggedInEmail, currentGift['id']);
+          await pledgeModel.removePledge(loggedInEmail, currentGift['id']);
           setState(() {
             currentGift['status'] = 'Available'; // Update the status
           });
@@ -253,7 +261,7 @@ class _GiftListPageState extends State<GiftListPage> {
         );
       } else {
         // Pledge the gift if it is not pledged and the device is online
-        await dbHelper.insertPledge(loggedInEmail, currentGift['id']);
+        await pledgeModel.insertPledge(loggedInEmail, currentGift['id']);
         sendNotificationToGiftOwner(userToken, title, body, userOwnerId);
         setState(() {
           currentGift['status'] = 'Pledged'; // Update the status
@@ -274,7 +282,7 @@ class _GiftListPageState extends State<GiftListPage> {
   // Edit the details of an existing gift
   Future<void> editGift(Map<String, dynamic> updatedGift) async {
     try {
-      await dbHelper.updateGift(updatedGift);
+      await giftModel.updateGift(updatedGift);
       setState(() {
         final index =
         gifts.indexWhere((gift) => gift['id'] == updatedGift['id']);
@@ -301,13 +309,13 @@ class _GiftListPageState extends State<GiftListPage> {
       return;
     }
 
-    final dbHelper = DatabaseHelper();
-    try {
+    final EventModel eventModel = EventModel();
+   try {
       final gift = gifts[index];
       print("Deleting gift: $gift"); // Debug print
 
       final giftId = gift['id']; // Fetch the gift ID
-      final event = await dbHelper.getEventById(widget.eventId); // Await the async call
+      final event = await eventModel.getEventById(widget.eventId); // Await the async call
       final userEmail = event?['email'];
       print("Gift ID: $giftId");
       print("User Email: $userEmail");
@@ -333,7 +341,7 @@ class _GiftListPageState extends State<GiftListPage> {
       }
 
       // Proceed with deletion if no pledges are found
-      final rowsAffected = await dbHelper.deleteGift(giftId);
+      final rowsAffected = await giftModel.deleteGift(giftId);
 
       if (rowsAffected > 0) {
         setState(() {

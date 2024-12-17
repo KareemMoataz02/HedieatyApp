@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
-import 'database_helper.dart';
-import 'gift_details_page.dart'; // Ensure this imports your DatabaseHelper
+import '../services/database_helper.dart';
+import 'gift_details_page.dart';
+import '../models/event_model.dart';
+import '../models/pledged_gift_model.dart';
+import '../models/user_model.dart'; // Ensure this imports your DatabaseHelper
 
 class MyPledgedGiftsPage extends StatefulWidget {
   final String email; // This should be the current user's email
@@ -15,6 +18,9 @@ class MyPledgedGiftsPage extends StatefulWidget {
 class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
   List<Map<String, dynamic>> pledgedGifts = [];
   final dbHelper = DatabaseHelper();
+  final userModel = UserModel();
+  final  eventModel = EventModel();
+  final pledgeModel = PledgeModel();
 
   @override
   void initState() {
@@ -25,7 +31,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
   Future<void> _loadPledgedGifts() async {
     try {
       // Fetch gifts pledged by the current user using their email
-      final giftList = await dbHelper.getPledgedGiftsByUser(widget.email);
+      final giftList = await pledgeModel.getPledgedGiftsByUser(widget.email);
       print('Pledged gifts: $giftList'); // Debugging line
       setState(() {
         pledgedGifts = giftList;
@@ -37,7 +43,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
 
   // Function to get event details by event ID
   Future<Map<String, dynamic>?> _getEventDetails(int eventId) async {
-    final event = await dbHelper.getEventById(eventId);
+    final event = await eventModel.getEventById(eventId);
     return event; // Return event details or null if no event found
   }
 
@@ -54,7 +60,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
 
   // Function to get event owner name
   Future<String> _getEventOwnerName(String email) async {
-    final user = await dbHelper.getUserByEmail(email);
+    final user = await userModel.getUserByEmail(email);
     return user?['username'] ?? 'Unknown Owner';
   }
 

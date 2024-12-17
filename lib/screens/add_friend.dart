@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hedieaty/database_helper.dart';
+import 'package:hedieaty/services/database_helper.dart';
+import 'package:hedieaty/models/friend_model.dart';
+
+import '../models/user_model.dart';
 
 class AddFriendPage extends StatefulWidget {
   final String email;
@@ -26,8 +29,8 @@ class _AddFriendPageState extends State<AddFriendPage> {
   }
 
   Future<int> getCurrentUserId() async {
-    final dbHelper = DatabaseHelper();
-    var currentUser = await dbHelper.getUserByEmail(widget.email);
+    final userModel = UserModel();
+    var currentUser = await userModel.getUserByEmail(widget.email);
     return currentUser?['id'] ?? 0;
   }
 
@@ -38,16 +41,19 @@ class _AddFriendPageState extends State<AddFriendPage> {
     }
 
     final dbHelper = DatabaseHelper();
-    var user = isEmail ? await dbHelper.getUserByEmail(input) : await dbHelper.getUserByPhone(input);
+    final userModel = UserModel();
+    final friendModel = FriendModel();
+
+    var user = isEmail ? await userModel.getUserByEmail(input) : await userModel.getUserByPhone(input);
     int userId = await getCurrentUserId();
 
     if (user != null && userId != user['id']) {
       int friendId = user['id'];
-      bool existingFriend = await dbHelper.checkIfFriendExists(userId, friendId);
+      bool existingFriend = await friendModel.checkIfFriendExists(userId, friendId);
       if (existingFriend) {
         showDialogMessage('Error', 'You already added this user');
       } else {
-        await dbHelper.sendFriendRequest(userId, friendId);
+        await friendModel.sendFriendRequest(userId, friendId);
         showDialogMessage('Success', 'Friend request sent');
         refreshData();
       }
@@ -62,10 +68,10 @@ class _AddFriendPageState extends State<AddFriendPage> {
   }
 
   Future<void> updateFriendRequest(int friendId, String status) async {
-    final dbHelper = DatabaseHelper();
+    final friendModel = FriendModel();
     int userId = await getCurrentUserId();
     try {
-      await dbHelper.updateFriendRequestStatus(userId, friendId, status);
+      await friendModel.updateFriendRequestStatus(userId, friendId, status);
       showDialogMessage('Success', status == 'accepted' ? 'Friend request accepted' : 'Friend request declined');
       refreshData();
     } catch (error) {
@@ -76,15 +82,15 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
   Future<void> fetchRecentFriends() async {
     int userId = await getCurrentUserId();
-    final dbHelper = DatabaseHelper();
-    var friends = await dbHelper.getAcceptedFriendsByUserId(userId);
+    final friendModel = FriendModel();
+    var friends = await friendModel.getAcceptedFriendsByUserId(userId);
     setState(() => recentFriends = friends);
   }
 
   Future<void> fetchFriendRequests() async {
     int userId = await getCurrentUserId();
-    final dbHelper = DatabaseHelper();
-    var requests = await dbHelper.getFriendRequests(userId);
+    final friendModel = FriendModel();
+    var requests = await friendModel.getFriendRequests(userId);
     setState(() => friendRequests = requests.map((request) => {
       ...request,
       'username': request['username'] ?? 'Unknown',

@@ -7,14 +7,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../database_helper.dart'; // Ensure the correct relative path
+import 'database_helper.dart'; // Ensure the correct relative path
 import 'package:flutter/material.dart';
+
+import '../models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
   final FirebaseMessaging _messaging;
   final DatabaseHelper _dbHelper;
+  final UserModel _userModel;
 
   AuthService({
     FirebaseAuth? firebaseAuth,
@@ -24,7 +27,9 @@ class AuthService {
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
         _messaging = messaging ?? FirebaseMessaging.instance,
-        _dbHelper = dbHelper ?? DatabaseHelper();
+        _dbHelper = dbHelper ?? DatabaseHelper(),
+        _userModel = UserModel();
+
 
   /// Logs in the user using email/password (Online)
   Future<String?> loginWithEmail({
@@ -53,7 +58,7 @@ class AuthService {
       await prefs.setString('email', email);
 
       // Update local SQLite with the new password hash
-      await _dbHelper.updateUserPasswordByEmail(email, password);
+      await _userModel.updateUserPasswordByEmail(email, password);
 
       return null; // Null indicates success
     } on FirebaseAuthException catch (e) {
@@ -83,7 +88,7 @@ class AuthService {
   }) async {
     try {
       // Retrieve user by phone number from local SQLite
-      Map<String, dynamic>? user = await _dbHelper.getUserByPhone(phone);
+      Map<String, dynamic>? user = await _userModel.getUserByPhone(phone);
 
       if (user == null) {
         return "No user found with the provided phone number.";
@@ -91,7 +96,7 @@ class AuthService {
       await _updateFcmToken(user['email']);
 
       String storedHashedPassword = user['password'];
-      bool isPasswordValid = _dbHelper.verifyPassword(password, storedHashedPassword);
+      bool isPasswordValid = _userModel.verifyPassword(password, storedHashedPassword);
 
       if (!isPasswordValid) {
         return "Incorrect password.";
@@ -164,7 +169,7 @@ class AuthService {
           print("FCM Token added/updated in Firestore.");
 
           // Update the local SQLite database
-          await _dbHelper.updateFcmTokenInDatabase(newFcmToken, email);
+          await _userModel.updateFcmTokenInDatabase(newFcmToken, email);
         } else {
           print("FCM Token is the same. No update needed.");
         }
@@ -244,7 +249,7 @@ class AuthService {
 
     try {
       // Check if the user already exists
-      final existingUser = await _dbHelper.getUserByEmailOrPhone(email, phone);
+      final existingUser = await _userModel.getUserByEmailOrPhone(email, phone);
       if (existingUser != null) {
         return "Email or phone number already in use.";
       }
@@ -274,7 +279,7 @@ class AuthService {
           await user.updateDisplayName(username);
 
           // Insert user into the local database using createUser (which hashes the password)
-          await _dbHelper.insertUser({
+          await _userModel.insertUser({
             'username': username,
             'email': email,
             'password': password, // Plain password; createUser will hash it

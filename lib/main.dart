@@ -2,14 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'login.dart';
-import 'home_page.dart';
-import 'database_helper.dart';
-import 'connectivity_service.dart';
+import 'screens/login.dart';
+import 'screens/home_page.dart';
+import 'services/database_helper.dart';
+import 'package:hedieaty/services/connectivity_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
-import 'notifications.dart';
+import './services/notifications.dart';
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 

@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'database_helper.dart';
+import '../services/database_helper.dart';
 import 'event_list_page.dart';
-import 'image_converter.dart';
+import '../services/image_converter.dart'; // Ensure the path is correct
+import '../models/friend_model.dart';
+import '../models/user_model.dart';
 import 'my_pledged_gifts_page.dart';
 
 class ProfilePage extends HookWidget {
@@ -29,14 +31,16 @@ class ProfilePage extends HookWidget {
 
     // Initialize profile data
     Future<void> _initializeProfile() async {
-      final dbHelper = DatabaseHelper();
+      final userModel = UserModel();
+      final friendModel = FriendModel();
+
       try {
         // Fetch logged-in email from SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         loggedInEmail.value = prefs.getString('email');
 
         // Load profile data
-        final user = await dbHelper.getUserByEmail(email);
+        final user = await userModel.getUserByEmail(email);
         if (user != null) {
           username.value = user['username'] ?? 'User';
           phone.value = user['phone'] ?? 'N/A';
@@ -48,7 +52,7 @@ class ProfilePage extends HookWidget {
         isEditable.value = (loggedInEmail.value?.toLowerCase() == email.toLowerCase());
 
         // Fetch recent friends
-        final friends = await dbHelper.getAcceptedFriendsByUserId(user?['id'] ?? 0);
+        final friends = await friendModel.getAcceptedFriendsByUserId(user?['id'] ?? 0);
         recentFriends.value = friends;
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -60,11 +64,11 @@ class ProfilePage extends HookWidget {
     // Update user data (only username and notifications are editable)
     Future<void> _updateUserData(String field, dynamic value) async {
       try {
-        final dbHelper = DatabaseHelper();
-        final user = await dbHelper.getUserByEmail(email);
+        final userModel = UserModel();
+        final user = await userModel.getUserByEmail(email);
 
         if (user != null) {
-          final updatedRows = await dbHelper.updateUser(user['id'], {field: value});
+          final updatedRows = await userModel.updateUser(user['id'], {field: value});
           if (updatedRows > 0) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('$field updated successfully')),
@@ -87,11 +91,11 @@ class ProfilePage extends HookWidget {
       final imageString = await imageConverter.pickAndCompressImageToString();
 
       if (imageString != null) {
-        final dbHelper = DatabaseHelper();
-        final user = await dbHelper.getUserByEmail(email);
+        final userModel = UserModel();
+        final user = await userModel.getUserByEmail(email);
 
         if (user != null) {
-          await dbHelper.updateUser(user['id'], {'imagePath': imageString});
+          await userModel.updateUser(user['id'], {'imagePath': imageString});
           imagePath.value = imageString; // Update UI with the new Base64 image string
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Profile picture updated')),

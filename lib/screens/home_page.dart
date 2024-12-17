@@ -7,16 +7,18 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:hedieaty/login.dart';
+import 'package:hedieaty/screens/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hedieaty/profile_page.dart';
+import 'package:hedieaty/screens/profile_page.dart';
 import 'event_list_page.dart';
+import '../models/friend_model.dart';
+import '../models/user_model.dart';
 import 'my_pledged_gifts_page.dart';
 import 'add_friend.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'database_helper.dart';
-import 'image_converter.dart'; // Import ImageConverter
-import 'package:hedieaty/notifications.dart';
+import '../services/database_helper.dart';
+import '../services/image_converter.dart'; // Ensure the path is correct
+import '../services/notifications.dart';
 
 class HomePage extends StatefulWidget {
   final String email; // Property to store email
@@ -35,6 +37,7 @@ class _HomePageState extends State<HomePage> {
   bool isLoading = true; // Loading state
 
   final dbHelper = DatabaseHelper();
+  final userModel = UserModel();
   final ImageConverter _imageConverter = ImageConverter(); // Instantiate ImageConverter
   late StreamSubscription<bool> _connectivitySubscription;
 
@@ -79,7 +82,7 @@ class _HomePageState extends State<HomePage> {
   // Function to fetch username associated with the email
   Future<void> _loadUsername() async {
     final dbHelper = DatabaseHelper();
-    final user = await dbHelper.getUserByEmail(widget.email);
+    final user = await userModel.getUserByEmail(widget.email);
     if (user == null) {
       print('Error: No user found with email: ${widget.email}');
       // Optionally, handle the case where the user is not found
@@ -98,14 +101,14 @@ class _HomePageState extends State<HomePage> {
   // Function to load friend's image
   Future<String?> _loadFriendImage(String email) async {
     final dbHelper = DatabaseHelper();
-    final user = await dbHelper.getUserByEmail(email);
+    final user = await userModel.getUserByEmail(email);
     return user?['imagePath']; // Return the image path or null if not found
   }
 
   // Function to fetch current user ID from the database
   Future<int> getCurrentUserId() async {
     final dbHelper = DatabaseHelper();
-    final user = await dbHelper.getUserByEmail(widget.email);
+    final user = await userModel.getUserByEmail(widget.email);
     if (user == null) {
       print('Error: No user found when fetching userId for email: ${widget.email}');
       // Optionally, handle the case where the user is not found
@@ -128,10 +131,10 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       print('Fetching friends for userId: $userId');
-      final dbHelper = DatabaseHelper();
+      final friendModel = FriendModel();
 
       // Fetch the recent friends from the database
-      final friends = await dbHelper.getAcceptedFriendsByUserId(userId);
+      final friends = await friendModel.getAcceptedFriendsByUserId(userId);
       print('Number of accepted friends found: ${friends.length}');
 
       if (mounted) {
@@ -180,7 +183,7 @@ class _HomePageState extends State<HomePage> {
         // Check if the status changed from 'pending' to 'accepted'
         if (previousStatus == 'pending' && currentStatus == 'accepted') {
           int friendId = doc['friend_id'];  // friend_id is stored
-          String? friendEmail = await dbHelper.getEmailById(friendId); // Fetch the email by friend_id
+          String? friendEmail = await userModel.getEmailById(friendId); // Fetch the email by friend_id
 
           if (friendEmail != null) {
             sendNotificationOnFriendStatusChange(friendEmail);
