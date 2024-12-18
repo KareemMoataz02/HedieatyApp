@@ -3,7 +3,6 @@ import 'package:hedieaty/models/event_model.dart';
 import 'gift_list_page.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/user_model.dart';
 
 class EventListPage extends StatefulWidget {
@@ -23,15 +22,17 @@ class _EventListPageState extends State<EventListPage> {
   int? userid;
   String username = ''; // To store the user's username
   bool isLoading = false; // Loading indicator for async operations
-  bool isOwner =
-      false; // This will store whether the logged-in user is the owner
-
+  bool isOwner = false;
   @override
   void initState() {
     super.initState();
-    _loadUsername();
-    _loadEvents();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadEvents();
+        }
+      });
     _checkOwnership();
+    _loadUsername();
   }
 
   // Check if the logged-in user is the owner of the event
@@ -216,14 +217,14 @@ class _EventListPageState extends State<EventListPage> {
       final eventId = events[index]['id'];
       await eventModel.deleteEvent(eventId);
       setState(() {
-        // Modify the mutable events list
-        events = List.from(events)..removeAt(index);
+        events.removeAt(index); // Directly modify the list within setState
       });
       print("Event with ID $eventId deleted successfully.");
     } catch (e) {
       print("Error deleting event: $e");
     }
   }
+
 
   // Sort events based on selected criterion
   void sortEvents() {
@@ -237,6 +238,7 @@ class _EventListPageState extends State<EventListPage> {
       }
     });
   }
+
 
   @override
   Widget build(BuildContext context) {

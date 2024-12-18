@@ -392,7 +392,7 @@ class _HomePageState extends State<HomePage> {
                             radius: 30,
                             backgroundImage: friend['imagePath'] != null && friend['imagePath'].isNotEmpty
                                 ? _buildFriendImage(friend['imagePath'])
-                                : AssetImage('assets/default_avatar.png') as ImageProvider,
+                                : AssetImage('Assets/logo.jpeg') as ImageProvider,
                           ),
                         ),
                         SizedBox(width: 16.0),

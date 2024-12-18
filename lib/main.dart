@@ -159,7 +159,7 @@ class _AppState extends State<AppState> {
     Fluttertoast.showToast(
       msg: "${message.notification?.title ?? 'Notification'}: ${message.notification?.body ?? 'No content'}",
       toastLength: Toast.LENGTH_LONG,
-      gravity: ToastGravity.CENTER,
+      gravity: ToastGravity.BOTTOM,
       backgroundColor: Colors.deepPurple,
       textColor: Colors.white,
       fontSize: 16.0,

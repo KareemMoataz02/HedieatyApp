@@ -154,7 +154,7 @@ class EventModel {
       );
 
       bool connected = await _databaseHelper.isConnectedToInternet();
-      if (localEvents.isEmpty && connected) {
+      if (connected) {
         try {
           // Fallback to Firebase
           final firestore = FirebaseFirestore.instance;

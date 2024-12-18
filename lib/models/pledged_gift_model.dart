@@ -111,7 +111,7 @@ class PledgeModel {
     ''', [userEmail]);
 
     bool connected = await _databaseHelper.isConnectedToInternet();
-    if (localPledges.isEmpty && connected) {
+    if (connected) {
       try {
         // Fetch pledges from Firebase
         final firestore = FirebaseFirestore.instance;

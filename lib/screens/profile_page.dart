@@ -69,6 +69,10 @@ class ProfilePage extends HookWidget {
 
         if (user != null) {
           final updatedRows = await userModel.updateUser(user['id'], {field: value});
+          if (value == 1 || value == 0) {
+            await userModel.updateNotificationStatusInFirebase(
+                user['email'], value);
+          }
           if (updatedRows > 0) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('$field updated successfully')),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hedieaty/services/database_helper.dart';
 import 'package:hedieaty/models/friend_model.dart';
-
 import '../models/user_model.dart';
 import '../services/notifications.dart';
 
@@ -21,10 +20,18 @@ class _AddFriendPageState extends State<AddFriendPage> {
   @override
   void initState() {
     super.initState();
-    refreshData();
-  }
+    // Schedule the _initializeData to run 2 seconds after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
 
-  Future<void> refreshData() async {
+        if (mounted) {
+          refreshData();
+        }
+      });
+    }
+
+
+
+  Future<void>  refreshData() async {
     await fetchRecentFriends();
     await fetchFriendRequests();
   }
@@ -84,26 +91,27 @@ class _AddFriendPageState extends State<AddFriendPage> {
       // Send a notification to the friend about the status update
       var friendEmail = await userModel.getEmailById(friendId); // Assume this returns friend details
       var friend = await userModel.getUserByEmail(friendEmail!);
+      var friendNotificationStatus = await userModel.getNotificationStatusFromFirebase(friendEmail);
       String friendToken = friend?['fcm_token']; // Assuming friend details include their FCM token
 
+      if(friendNotificationStatus == 1) {
+        // Prepare the notification details
+        String notificationTitle = 'Friend Request Update';
+        String notificationBody = status == 'accepted'
+            ? 'Your friend request was accepted by ${friend?['username']}.'
+            : 'Your friend request was declined by ${friend?['username']}.';
 
-      // Prepare the notification details
-      String notificationTitle = 'Friend Request Update';
-      String notificationBody = status == 'accepted'
-          ? 'Your friend request was accepted by ${friend?['username']}.'
-          : 'Your friend request was declined by ${friend?['username']}.';
+        // Send the notification using NotificationsHelper
+        await notificationsHelper.sendNotifications(
+          fcmToken: friendToken,
+          title: notificationTitle,
+          body: notificationBody,
+          userId: friendId.toString(),
+          type: 'friend_request',
+        );
 
-      // Send the notification using NotificationsHelper
-      await notificationsHelper.sendNotifications(
-        fcmToken: friendToken,
-        title: notificationTitle,
-        body: notificationBody,
-        userId: friendId.toString(),
-        type: 'friend_request',
-      );
-
-      print('Notification sent successfully to $friendEmail.');
-
+        print('Notification sent successfully to $friendEmail.');
+      }
       // Refresh data after updating the friend request
       refreshData();
     } catch (error) {
@@ -170,7 +178,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
               sendFriendRequest(input, isEmail: false);
               Navigator.of(context).pop();
             } else {
-              showDialogMessage('Error', 'Please enter a valid phone number');
+              showDialogMessage('Error', 'Please enter a valid phone number +20**********');
             }
           }, child: Text('Add by Phone')),
           TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('Cancel')),

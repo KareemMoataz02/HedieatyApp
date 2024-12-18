@@ -59,9 +59,16 @@ class _GiftListPageState extends State<GiftListPage> {
   @override
   void initState() {
     super.initState();
-    _loadGifts();
-    _checkOwnership();
-    _getEventOwnerEmail();
+    // Schedule the _initializeData to run 2 seconds after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadGifts();
+        _checkOwnership();
+        _getEventOwnerEmail();
+      }
+    });
+
+
 
     // Listen to connectivity changes
     _connectivitySubscription =
@@ -175,7 +182,8 @@ class _GiftListPageState extends State<GiftListPage> {
 
   Future<void> sendNotificationToGiftOwner(String userToken, String title,
       String body, String userOwnerId) async {
-    if (userNotifications == 1) {
+userNotifications = (await userModel.getNotificationStatusFromFirebase(eventOwner))!;
+if (userNotifications == 1) {
       var notificationsHelper = NotificationsHelper();
       await notificationsHelper.sendNotifications(
         fcmToken: userToken,
@@ -231,13 +239,20 @@ class _GiftListPageState extends State<GiftListPage> {
     });
 
     try {
+        if (!isConnected) {
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Cannot pledge a gift while offline'))
+    );
+    }
+
       if (isPledged) {
         // Retrieve all pledges for this gift to check who pledged it
         final pledgedGifts =
         await pledgeModel.getPledgedGiftsByUser(loggedInEmail.toLowerCase());
 
         final isPledgedByUser = pledgedGifts.any((pledgedGift) {
-          return pledgedGift['id'] == currentGift['id'] &&
+          print( pledgedGift['userEmail']);
+          return pledgedGift['giftId'] == currentGift['id'] &&
               pledgedGift['userEmail'] ==
                   loggedInEmail.toLowerCase(); // Ensure email is lowercase
         });
@@ -255,10 +270,6 @@ class _GiftListPageState extends State<GiftListPage> {
             currentGift['status'] = 'Available'; // Update the status
           });
         }
-      } else if (!isConnected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cannot pledge a gift while offline')),
-        );
       } else {
         // Pledge the gift if it is not pledged and the device is online
         await pledgeModel.insertPledge(loggedInEmail, currentGift['id']);

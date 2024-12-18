@@ -64,7 +64,8 @@ class UserModel {
         'users',
         user,
         conflictAlgorithm:
-        ConflictAlgorithm.replace, // Replace if user already exists based on email/phone
+        ConflictAlgorithm
+            .replace, // Replace if user already exists based on email/phone
       );
 
       bool connected = await _databaseHelper.isConnectedToInternet();
@@ -101,7 +102,8 @@ class UserModel {
   }
 
   /// Updates a user's password by their email and syncs with Firebase.
-  Future<int> updateUserPasswordByEmail(String email, String newPassword) async {
+  Future<int> updateUserPasswordByEmail(String email,
+      String newPassword) async {
     final db = await _databaseHelper.database;
 
     try {
@@ -152,7 +154,8 @@ class UserModel {
             // Optionally implement retry logic or mark the record for later synchronization
           }
         } else {
-          print('No internet connection. Password update will be synced when online.');
+          print(
+              'No internet connection. Password update will be synced when online.');
         }
       } else {
         print('No user found with email $email.');
@@ -166,8 +169,8 @@ class UserModel {
   }
 
   /// Retrieves a user by email or phone, with fallback to Firebase.
-  Future<Map<String, dynamic>?> getUserByEmailOrPhone(
-      String email, String phone) async {
+  Future<Map<String, dynamic>?> getUserByEmailOrPhone(String email,
+      String phone) async {
     final db = await _databaseHelper.database;
     final lowerCaseEmail = email.toLowerCase();
     final lowerCasePhone = phone.toLowerCase();
@@ -201,8 +204,10 @@ class UserModel {
                 firebaseUser['id'] = int.parse(querySnapshot.docs.first.id);
               } catch (parseError) {
                 print(
-                    "Error parsing Firestore doc ID to int for doc ${querySnapshot.docs.first.id}: $parseError");
-                firebaseUser['id'] = 0; // Assign a default value or handle appropriately
+                    "Error parsing Firestore doc ID to int for doc ${querySnapshot
+                        .docs.first.id}: $parseError");
+                firebaseUser['id'] =
+                0; // Assign a default value or handle appropriately
               }
 
               firebaseUser['synced'] = 1; // Mark as synced
@@ -227,8 +232,8 @@ class UserModel {
   }
 
   /// Updates a user's FCM token in the local database and syncs with Firebase.
-  Future<void> updateFcmTokenInDatabase(
-      String newFcmToken, String email) async {
+  Future<void> updateFcmTokenInDatabase(String newFcmToken,
+      String email) async {
     final db = await _databaseHelper.database;
 
     try {
@@ -405,11 +410,14 @@ class UserModel {
           for (var doc in querySnapshot.docs) {
             final userData = doc.data();
             try {
-              userData['id'] = int.parse(doc.id); // Use Firestore doc ID as SQLite id
+              userData['id'] =
+                  int.parse(doc.id); // Use Firestore doc ID as SQLite id
             } catch (parseError) {
               print(
-                  "Error parsing Firestore doc ID to int for doc ${doc.id}: $parseError");
-              userData['id'] = 0; // Assign a default value or handle appropriately
+                  "Error parsing Firestore doc ID to int for doc ${doc
+                      .id}: $parseError");
+              userData['id'] =
+              0; // Assign a default value or handle appropriately
             }
             userData['synced'] = 1; // Mark as synced
 
@@ -519,8 +527,10 @@ class UserModel {
               firebaseUser['id'] = int.parse(querySnapshot.docs.first.id);
             } catch (parseError) {
               print(
-                  "Error parsing Firestore doc ID to int for doc ${querySnapshot.docs.first.id}: $parseError");
-              firebaseUser['id'] = 0; // Assign a default value or handle appropriately
+                  "Error parsing Firestore doc ID to int for doc ${querySnapshot
+                      .docs.first.id}: $parseError");
+              firebaseUser['id'] =
+              0; // Assign a default value or handle appropriately
             }
             firebaseUser['synced'] = 1; // Mark as synced
 
@@ -574,8 +584,10 @@ class UserModel {
               firebaseUser['id'] = int.parse(querySnapshot.docs.first.id);
             } catch (parseError) {
               print(
-                  "Error parsing Firestore doc ID to int for doc ${querySnapshot.docs.first.id}: $parseError");
-              firebaseUser['id'] = 0; // Assign a default value or handle appropriately
+                  "Error parsing Firestore doc ID to int for doc ${querySnapshot
+                      .docs.first.id}: $parseError");
+              firebaseUser['id'] =
+              0; // Assign a default value or handle appropriately
             }
             firebaseUser['synced'] = 1; // Mark as synced
 
@@ -655,6 +667,77 @@ class UserModel {
     } catch (e) {
       print('Error updating user image: $e');
       return 0; // Indicate failure
+    }
+  }
+
+  /// Retrieves the notification status of a user from Firebase Firestore.
+  Future<int?> getNotificationStatusFromFirebase(String email) async {
+    try {
+      // Check for an active internet connection
+      bool isConnected = await _databaseHelper.isConnectedToInternet();
+      if (!isConnected) {
+        print("No internet connection. Cannot fetch notification status.");
+        return null;
+      }
+
+      // Query the Firestore database for the user's document
+      final firestore = FirebaseFirestore.instance;
+      final querySnapshot = await firestore
+          .collection('users')
+          .where('email', isEqualTo: email.toLowerCase())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Extract the 'notifications' field from the document
+        final docData = querySnapshot.docs.first.data();
+        final int? notificationStatus = docData['notifications'] as int?;
+        print("Notification status for $email: $notificationStatus");
+        return notificationStatus;
+      } else {
+        print("No user found with email: $email");
+        return null;
+      }
+    } catch (e) {
+      print("Error fetching notification status from Firebase: $e");
+      return null;
+    }
+  }
+
+  /// Updates the notification status of a user in Firebase Firestore.
+  Future<bool> updateNotificationStatusInFirebase(String email,
+      int status) async {
+    try {
+      // Check for an active internet connection
+      bool isConnected = await _databaseHelper.isConnectedToInternet();
+      if (!isConnected) {
+        print("No internet connection. Cannot update notification status.");
+        return false;
+      }
+
+      // Query the Firestore database for the user's document
+      final firestore = FirebaseFirestore.instance;
+      final querySnapshot = await firestore
+          .collection('users')
+          .where('email', isEqualTo: email.toLowerCase())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Update the 'notifications' field in the document
+        final docId = querySnapshot.docs.first.id;
+        await firestore.collection('users').doc(docId).update({
+          'notifications': status,
+        });
+        print("Notification status updated for $email to: $status");
+        return true;
+      } else {
+        print("No user found with email: $email");
+        return false;
+      }
+    } catch (e) {
+      print("Error updating notification status in Firebase: $e");
+      return false;
     }
   }
 }

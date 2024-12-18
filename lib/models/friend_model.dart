@@ -398,7 +398,7 @@ class FriendModel {
     ''', [userId]);
 
     bool connected = await _databaseHelper.isConnectedToInternet();
-    if (localFriends.isEmpty && connected) {
+    if (connected) {
       try {
         // Fallback to Firebase
         final firestore = FirebaseFirestore.instance;

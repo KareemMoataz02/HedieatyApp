@@ -91,7 +91,7 @@ class GiftModel {
     );
 
     bool connected = await _databaseHelper.isConnectedToInternet();
-    if (localGifts.isEmpty && connected) {
+    if (connected) {
       try {
         // Fetch gifts from Firebase
         final firestore = FirebaseFirestore.instance;
@@ -189,6 +189,58 @@ class GiftModel {
       return 0; // Indicate failure
     }
   }
+
+  // Get Gift by ID with Fallback to Firebase
+  Future<Map<String, dynamic>?> getGiftById(int giftId) async {
+    final db = await _databaseHelper.database;  // Ensure you have access to your database helper
+    Map<String, dynamic>? gift;
+
+    try {
+      // Fetch from the local database
+      final result = await db.query(
+        'gifts',  // Assuming you have a gifts table
+        where: 'id = ? AND synced = 1',  // Only fetch synced gifts
+        whereArgs: [giftId],
+      );
+
+      if (result.isNotEmpty) {
+        gift = result.first;
+      }
+
+      if (gift == null) {
+        // Fallback to Firebase if not found locally
+        final firestore = FirebaseFirestore.instance;
+        bool connected = await _databaseHelper.isConnectedToInternet();
+
+        if (connected) {
+          try {
+            final docSnapshot = await firestore.collection('gifts').doc(giftId.toString()).get();
+            if (docSnapshot.exists) {
+              gift = docSnapshot.data();
+              gift!['id'] = int.parse(docSnapshot.id);  // Use Firestore doc ID as gift ID
+              gift['synced'] = 1;  // Mark as synced
+
+              // Sync Firebase data to local database
+              await db.insert(
+                'gifts',
+                gift,
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+            }
+          } catch (e) {
+            print("Error fetching gift by ID from Firebase: $e");
+            // Optionally handle the error
+          }
+        }
+      }
+    } catch (e) {
+      print("Error fetching gift by ID: $e");
+      rethrow;
+    }
+
+    return gift;
+  }
+
 
   /// Deletes a gift from the local database and syncs the deletion with Firebase.
   Future<int> deleteGift(int id) async {
