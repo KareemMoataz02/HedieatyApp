@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/services.dart'; // For input formatters
 import 'package:hedieaty/models/gift_model.dart';
 import '../services/image_converter.dart'; // Ensure the path is correct
-import '../services/database_helper.dart';
 
 class AddGiftPage extends StatefulWidget {
   final int eventId; // Event ID to associate with the gift

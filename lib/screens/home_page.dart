@@ -1,5 +1,4 @@
 // home_page.dart
-
 import 'dart:async'; // Import for Future.delayed
 import 'dart:convert'; // Import for Base64 encoding/decoding
 import 'dart:typed_data'; // Import for Uint8List
@@ -154,23 +153,38 @@ class _HomePageState extends State<HomePage> {
 
   // Function to send notifications when friend status is updated to accepted
   Future<void> sendNotificationOnFriendStatusChange(String friendEmail) async {
-    // This is where you would send a notification using the previously defined showNotification method.
-    // For example, you could create a notification when the friend status changes to accepted.
+    try {
+      // Fetch user details from UserModel
+      final userModel = UserModel();
+      var friend = await userModel.getUserByEmail(friendEmail);
 
-    final message = RemoteMessage(
-      notification: RemoteNotification(
+      if (friend == null || friend['fcm_token'] == null) {
+        print("Friend details or FCM token not found.");
+        return;
+      }
+
+      String friendToken = friend['fcm_token'];
+
+      // Construct the notification message
+      var notificationsHelper = NotificationsHelper();
+      await notificationsHelper.sendNotifications(
+        fcmToken: friendToken,
         title: 'Friend Request Accepted',
         body: 'Your friend request to $friendEmail has been accepted!',
-      ),
-      data: {'friendEmail': friendEmail},
-    );
+        userId: friend['id'],
+        type: 'friend',
+      );
 
-    await NotificationsHelper.showNotification(message); // Use your showNotification method here
+      print("Notification sent for friend status change.");
+    } catch (e) {
+      print("Error sending friend status notification: $e");
+    }
   }
+
 
 // Firestore listener to monitor friend status changes
   void listenToFriendRequests() {
-    final dbHelper = DatabaseHelper();
+    final userModel = UserModel();
     FirebaseFirestore.instance.collection('friends')
         .where('user_id', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
         .snapshots()
@@ -274,7 +288,7 @@ class _HomePageState extends State<HomePage> {
                     radius: 40,
                     backgroundImage: imagePath.isNotEmpty
                         ? _buildUserImage(imagePath)
-                        : AssetImage('assets/default_avatar.png') as ImageProvider, // Fallback to default image
+                        : AssetImage('Assets/logo.jpeg') as ImageProvider, // Fallback to default image
                   ),
                   SizedBox(height: 5),
                   Text(

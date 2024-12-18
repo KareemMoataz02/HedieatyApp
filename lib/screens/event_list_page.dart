@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hedieaty/models/event_model.dart';
-import '../services/database_helper.dart'; // Assume you have a DatabaseHelper for CRUD operations
-import 'gift_list_page.dart'; // Import GiftListPage
+import 'gift_list_page.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -55,8 +54,6 @@ class _EventListPageState extends State<EventListPage> {
       final user = await userModel.getUserByEmail(widget.email);
       username = user?['username'] ?? 'User';
       userid = user?['id'];
-      print("ANA EL USER ID");
-      print(userid);
     } catch (e) {
       print("Error loading username: $e");
     } finally {
@@ -70,8 +67,6 @@ class _EventListPageState extends State<EventListPage> {
     try {
       final EventModel eventModel = EventModel();
       events = await eventModel.getEventsByEmail(widget.email.toLowerCase());
-      print("ANA EVENTS");
-      print(events);
     } catch (e) {
       print("Error loading events: $e");
     } finally {

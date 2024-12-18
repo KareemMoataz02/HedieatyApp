@@ -9,18 +9,29 @@ import 'package:hedieaty/services/connectivity_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import './services/notifications.dart';
+import 'package:fluttertoast/fluttertoast.dart'; // For displaying toasts
 
+// Global instance of Flutter Local Notifications Plugin
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 Future<void> initNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
+
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
-    // iOS: IOSInitializationSettings(),
+    // Add iOS initialization settings if required
   );
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      // Handle notification tapped
+      if (response.payload != null) {
+        print('Notification tapped with payload: ${response.payload}');
+      }
+    },
+  );
 }
 
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -30,29 +41,28 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.max, // Importance level
 );
 
-
 void setupNotifications() async {
   await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>()
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 }
 
 Future<void> backgroundMessageHandler(RemoteMessage message) async {
-  // Initialize the local notifications plugin in background
+  // Initialize notifications in the background
   await NotificationsHelper.showNotification(message);
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  initNotifications(); // Initialize notifications when the app starts
+  await initNotifications(); // Initialize notifications when the app starts
   setupNotifications();
+
   // Initialize the ConnectivityService before running the app
   final connectivityService = ConnectivityService();
-  connectivityService
-      .listenToConnectivityChanges(); // Start listening to connectivity changes
+  connectivityService.listenToConnectivityChanges(); // Start listening to connectivity changes
   FirebaseMessaging.onBackgroundMessage(backgroundMessageHandler);
+
   runApp(HedieatyApp(connectivityService));
 }
 
@@ -95,15 +105,14 @@ class _AppState extends State<AppState> {
     synchronizeDatabases();
 
     // Listen to connectivity changes globally
-    _connectivitySubscription =
-        widget.connectivityService.connectionStatusStream.listen((isConnected) {
+    _connectivitySubscription = widget.connectivityService.connectionStatusStream.listen((isConnected) {
       // Handle connectivity status changes globally
       if (isConnected) {
-        print("Connected to the internet.");
+        print("Connected to the internet. Synchronizing databases...");
+        synchronizeDatabases();
       } else {
         print("Disconnected from the internet.");
       }
-      ;
     });
 
     // Handle foreground notifications
@@ -111,12 +120,13 @@ class _AppState extends State<AppState> {
       print("Foreground notification received: ${message.notification?.title}");
       // Show notification locally when app is in foreground
       NotificationsHelper.showNotification(message);
+      // Show in-app toast for notifications
+      _showInAppToast(message);
     });
   }
 
   Future<void> clearDatabase() async {
-    await dbHelper
-        .clearDatabase(); // Assuming you have this method in your DatabaseHelper
+    await dbHelper.clearDatabase(); // Assuming you have this method in your DatabaseHelper
   }
 
   // Check the login status from SharedPreferences
@@ -141,8 +151,19 @@ class _AppState extends State<AppState> {
 
   // Synchronize data with Firebase
   Future<void> synchronizeDatabases() async {
-    await dbHelper
-        .synchronizeDatabases(); // Sync with local database and Firebase
+    await dbHelper.synchronizeDatabases(); // Sync with local database and Firebase
+  }
+
+  // Display a toast for in-app notifications
+  void _showInAppToast(RemoteMessage message) {
+    Fluttertoast.showToast(
+      msg: "${message.notification?.title ?? 'Notification'}: ${message.notification?.body ?? 'No content'}",
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.CENTER,
+      backgroundColor: Colors.deepPurple,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
   }
 
   @override
@@ -159,6 +180,7 @@ class _AppState extends State<AppState> {
     super.dispose();
   }
 }
+
 //
 // import 'dart:async';
 // import 'package:flutter/material.dart';

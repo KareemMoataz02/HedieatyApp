@@ -3,6 +3,7 @@ import 'package:hedieaty/services/database_helper.dart';
 import 'package:hedieaty/models/friend_model.dart';
 
 import '../models/user_model.dart';
+import '../services/notifications.dart';
 
 class AddFriendPage extends StatefulWidget {
   final String email;
@@ -69,16 +70,49 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
   Future<void> updateFriendRequest(int friendId, String status) async {
     final friendModel = FriendModel();
+    final userModel = UserModel();
+    final notificationsHelper = NotificationsHelper(); // Assuming NotificationsHelper exists
     int userId = await getCurrentUserId();
+
     try {
+      // Update the friend request status
       await friendModel.updateFriendRequestStatus(userId, friendId, status);
+
+      // Show a dialog message indicating success
       showDialogMessage('Success', status == 'accepted' ? 'Friend request accepted' : 'Friend request declined');
+
+      // Send a notification to the friend about the status update
+      var friendEmail = await userModel.getEmailById(friendId); // Assume this returns friend details
+      var friend = await userModel.getUserByEmail(friendEmail!);
+      String friendToken = friend?['fcm_token']; // Assuming friend details include their FCM token
+
+
+      // Prepare the notification details
+      String notificationTitle = 'Friend Request Update';
+      String notificationBody = status == 'accepted'
+          ? 'Your friend request was accepted by ${friend?['username']}.'
+          : 'Your friend request was declined by ${friend?['username']}.';
+
+      // Send the notification using NotificationsHelper
+      await notificationsHelper.sendNotifications(
+        fcmToken: friendToken,
+        title: notificationTitle,
+        body: notificationBody,
+        userId: friendId.toString(),
+        type: 'friend_request',
+      );
+
+      print('Notification sent successfully to $friendEmail.');
+
+      // Refresh data after updating the friend request
       refreshData();
     } catch (error) {
+      // Show an error message in case of failure
       showDialogMessage('Error', 'An error occurred while updating the friend request. Please try again.');
       print('Error updating friend request: $error');
     }
   }
+
 
   Future<void> fetchRecentFriends() async {
     int userId = await getCurrentUserId();

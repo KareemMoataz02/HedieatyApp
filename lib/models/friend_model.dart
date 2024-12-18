@@ -276,23 +276,112 @@ class FriendModel {
     return requests;
   }
 
-  /// Retrieves all accepted friends for [userId].
+  /// Retrieves all accepted friends for [userId], with fallback to Firebase if connected.
   Future<List<Map<String, dynamic>>> getAcceptedFriendsByUserId(int userId) async {
     final db = await _databaseHelper.database;
-    // Query that joins the users table on the friend_id and filters by user_id and status 'accepted'
-    final List<Map<String, dynamic>> friends = await db.rawQuery('''
+    List<Map<String, dynamic>> friends = [];
+
+    try {
+      // First, attempt to fetch accepted friends from the local SQLite database
+      friends = await db.rawQuery('''
       SELECT u.id, u.username, u.email, u.phone, u.imagePath
       FROM friends f
       JOIN users u ON u.id = f.friend_id
-      WHERE f.user_id = ? AND f.status = 'accepted'
+      WHERE f.user_id = ? AND f.status = 'accepted' AND f.synced = 1
     ''', [userId]);
 
-    if (friends.isEmpty) {
-      print("No accepted friends found for userId: $userId");
-    } else {
-      print("Friends list:");
-      print(friends);
+      bool connected = await _databaseHelper.isConnectedToInternet();
+
+      // If no friends are found locally and the device is connected to the internet, fetch from Firestore
+      if (friends.isEmpty && connected) {
+        try {
+          final firestore = FirebaseFirestore.instance;
+
+          // Query Firestore for accepted friends
+          final querySnapshot = await firestore
+              .collection('friends')
+              .where('user_id', isEqualTo: userId)
+              .where('status', isEqualTo: 'accepted')
+              .get();
+
+          // Iterate over each document in the Firestore snapshot
+          for (var doc in querySnapshot.docs) {
+            var friend = doc.data();
+
+            // Safely parse Firestore doc ID to int
+            try {
+              friend['id'] = int.parse(doc.id);
+            } catch (parseError) {
+              print("Error parsing Firestore doc ID to int for doc ${doc.id}: $parseError");
+              friend['id'] = 0; // Assign a default value or handle appropriately
+            }
+
+            // Insert the friend relationship into the local SQLite database
+            await db.insert(
+              'friends',
+              {
+                'id': friend['id'], // Use parsed Firestore doc ID as SQLite id
+                'user_id': friend['user_id'],
+                'friend_id': friend['friend_id'],
+                'status': friend['status'],
+                'synced': 1, // Mark as synced
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+
+            // Fetch associated user details from Firestore
+            var userSnapshot = await firestore
+                .collection('users')
+                .doc(friend['friend_id'].toString())
+                .get();
+
+            if (userSnapshot.exists) {
+              var userData = userSnapshot.data();
+              if (userData != null) {
+                // Insert or update the user details in the local SQLite database
+                await db.insert(
+                  'users',
+                  {
+                    'id': friend['friend_id'],
+                    'username': userData['username'],
+                    'email': userData['email'],
+                    'phone': userData['phone'],
+                    'password': userData['password'], // Ensure all required fields are included
+                    'imagePath': userData['imagePath'],
+                    'synced': 1,
+                  },
+                  conflictAlgorithm: ConflictAlgorithm.replace,
+                );
+              }
+            }
+          }
+
+          // Re-fetch the accepted friends from the local database after syncing
+          friends = await db.rawQuery('''
+          SELECT u.id, u.username, u.email, u.phone, u.imagePath
+          FROM friends f
+          JOIN users u ON u.id = f.friend_id
+          WHERE f.user_id = ? AND f.status = 'accepted' AND f.synced = 1
+        ''', [userId]);
+
+          print("Fetched accepted friends from Firestore and updated local database.");
+        } catch (e) {
+          print('Error fetching accepted friends from Firestore: $e');
+          // Optionally handle the error, e.g., notify the user or log the error for debugging
+        }
+      }
+
+      if (friends.isEmpty) {
+        print("No accepted friends found for userId: $userId");
+      } else {
+        print("Accepted friends list:");
+        print(friends);
+      }
+    } catch (e) {
+      print('Error retrieving accepted friends: $e');
+      // Optionally handle the error
     }
+
     return friends;
   }
 
