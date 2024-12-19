@@ -279,6 +279,7 @@ class FriendModel {
   /// Retrieves all accepted friends for [userId], with fallback to Firebase if connected.
   Future<List<Map<String, dynamic>>> getAcceptedFriendsByUserId(int userId) async {
     final db = await _databaseHelper.database;
+
     List<Map<String, dynamic>> friends = [];
 
     try {

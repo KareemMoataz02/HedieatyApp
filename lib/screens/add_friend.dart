@@ -48,7 +48,6 @@ class _AddFriendPageState extends State<AddFriendPage> {
       return;
     }
 
-    final dbHelper = DatabaseHelper();
     final userModel = UserModel();
     final friendModel = FriendModel();
 
@@ -78,28 +77,52 @@ class _AddFriendPageState extends State<AddFriendPage> {
   Future<void> updateFriendRequest(int friendId, String status) async {
     final friendModel = FriendModel();
     final userModel = UserModel();
-    final notificationsHelper = NotificationsHelper(); // Assuming NotificationsHelper exists
+    final notificationsHelper = NotificationsHelper();
+    final dbHelper = DatabaseHelper();
+    bool connected = await dbHelper.isConnectedToInternet();
     int userId = await getCurrentUserId();
+
+    print('Starting updateFriendRequest: userId=$userId, friendId=$friendId, status=$status');
 
     try {
       // Update the friend request status
+      print('Updating friend request status...');
       await friendModel.updateFriendRequestStatus(userId, friendId, status);
+      print('Friend request status updated.');
 
       // Show a dialog message indicating success
       showDialogMessage('Success', status == 'accepted' ? 'Friend request accepted' : 'Friend request declined');
+      print('Success dialog shown.');
 
       // Send a notification to the friend about the status update
-      var friendEmail = await userModel.getEmailById(friendId); // Assume this returns friend details
-      var friend = await userModel.getUserByEmail(friendEmail!);
-      var friendNotificationStatus = await userModel.getNotificationStatusFromFirebase(friendEmail);
-      String friendToken = friend?['fcm_token']; // Assuming friend details include their FCM token
+      print('Fetching friend email...');
+      String? friendEmail = await userModel.getEmailById(friendId);
+      if (friendEmail == null) {
+        throw Exception('Friend email not found for friendId: $friendId');
+      }
+      print('Friend email: $friendEmail');
 
-      if(friendNotificationStatus == 1) {
+      print('Fetching friend details...');
+      var friend = await userModel.getUserByEmail(friendEmail);
+      if (friend == null) {
+        throw Exception('Friend details not found for email: $friendEmail');
+      }
+      print('Friend details fetched.');
+
+      print('Fetching friend notification status...');
+      int? friendNotificationStatus = await userModel.getNotificationStatusFromFirebase(friendEmail);
+      friendNotificationStatus ??= 0;
+      print('Friend notification status: $friendNotificationStatus');
+      String? friendToken = await userModel.getFcmTokenFromFirebase(friendEmail);
+      if (friendToken == null || friendToken.isEmpty) {
+        print('Friend FCM token is null or empty for email: $friendEmail');
+      } else if (friendNotificationStatus == 1 && connected) {
+        print('Preparing to send notification...');
         // Prepare the notification details
         String notificationTitle = 'Friend Request Update';
         String notificationBody = status == 'accepted'
-            ? 'Your friend request was accepted by ${friend?['username']}.'
-            : 'Your friend request was declined by ${friend?['username']}.';
+            ? 'Your friend request was accepted by ${friend['username']}.'
+            : 'Your friend request was declined by ${friend['username']}.';
 
         // Send the notification using NotificationsHelper
         await notificationsHelper.sendNotifications(
@@ -109,17 +132,23 @@ class _AddFriendPageState extends State<AddFriendPage> {
           userId: friendId.toString(),
           type: 'friend_request',
         );
-
         print('Notification sent successfully to $friendEmail.');
+      } else {
+        print('Notifications are disabled or no internet connection.');
       }
+
       // Refresh data after updating the friend request
+      print('Refreshing data...');
       refreshData();
-    } catch (error) {
+      print('Data refreshed.');
+    } catch (error, stackTrace) {
       // Show an error message in case of failure
       showDialogMessage('Error', 'An error occurred while updating the friend request. Please try again.');
       print('Error updating friend request: $error');
+      print('Stack Trace: $stackTrace');
     }
   }
+
 
 
   Future<void> fetchRecentFriends() async {

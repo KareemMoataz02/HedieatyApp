@@ -37,11 +37,20 @@ class AuthService {
     required String password,
   }) async {
     try {
+      await _dbHelper.syncTableToFirebase('users', 'users');
+      await _dbHelper.syncTableFromFirebase('users', 'users');
       // Sign in with FirebaseAuth
       UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Update local SQLite with the new password hash
+      await _userModel.updateUserPasswordByEmail(email, password);
+
+
+      // Update FCM Token in Firestore and local SQLite
+      await _updateFcmToken(email);
 
       // Check if email is verified
       User? user = userCredential.user;
@@ -49,16 +58,13 @@ class AuthService {
         return "Please verify your email before logging in.";
       }
 
-      // Update FCM Token in Firestore and local SQLite
-      await _updateFcmToken(email);
 
       // Save login state in SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('email', email);
 
-      // Update local SQLite with the new password hash
-      await _userModel.updateUserPasswordByEmail(email, password);
+
 
       return null; // Null indicates success
     } on FirebaseAuthException catch (e) {
@@ -249,6 +255,8 @@ class AuthService {
 
     try {
       // Check if the user already exists
+      await _dbHelper.syncTableToFirebase('users', 'users');
+      await _dbHelper.syncTableFromFirebase('users', 'users');
       final existingUser = await _userModel.getUserByEmailOrPhone(email, phone);
       if (existingUser != null) {
         return "Email or phone number already in use.";

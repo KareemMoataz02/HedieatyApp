@@ -1,4 +1,4 @@
-// event_service.dart
+// event_model.dart
 import 'package:sqflite/sqflite.dart';
 import '../services/database_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class EventModel {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
 
-  // Create Events Table
+  // Create Events Table with additional fields: date, location, description
   Future<void> createEventsTable(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS events (
@@ -14,13 +14,16 @@ class EventModel {
         name TEXT NOT NULL,
         category TEXT NOT NULL,
         status TEXT NOT NULL,
-        deadline TEXT NOT NULL,
+        date TEXT NOT NULL,          
+        location TEXT,               
+        description TEXT,            
         email TEXT NOT NULL,
         user_id INTEGER,
         synced INTEGER DEFAULT 0,  
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
     ''');
+    print("Events table created or already exists.");
   }
 
   // Insert Event and Sync to Firebase
@@ -33,6 +36,8 @@ class EventModel {
       event['synced'] = 0;
       eventId = await db.insert('events', event);
 
+      print("Inserted event locally with ID: $eventId");
+
       bool connected = await _databaseHelper.isConnectedToInternet();
       if (connected) {
         try {
@@ -43,6 +48,8 @@ class EventModel {
             'id': eventId, // Ensure Firestore includes the SQLite ID
           });
 
+          print("Synced event to Firebase with ID: $eventId");
+
           // Update the synced flag in the local database after syncing with Firebase
           await db.update(
             'events',
@@ -50,13 +57,17 @@ class EventModel {
             where: 'id = ?',
             whereArgs: [eventId],
           );
+
+          print("Marked event as synced locally.");
         } catch (e) {
           print("Error syncing event to Firebase: $e");
           // Optionally implement retry logic or mark the record for later synchronization
         }
+      } else {
+        print("No internet connection. Event will be synced when online.");
       }
     } catch (e) {
-      print("Error inserting event: $e");
+      print("Error inserting event into local database: $e");
       rethrow;
     }
 
@@ -68,13 +79,15 @@ class EventModel {
     final db = await _databaseHelper.database;
 
     try {
-      // Update the local database
+      // Update the local database and mark as unsynced
       final rowsAffected = await db.update(
         'events',
         {...event, 'synced': 0}, // Set synced to 0 to indicate unsynced changes
         where: 'id = ?',
         whereArgs: [id],
       );
+
+      print("Updated $rowsAffected event(s) locally with ID: $id");
 
       if (rowsAffected > 0) {
         bool connected = await _databaseHelper.isConnectedToInternet();
@@ -86,6 +99,8 @@ class EventModel {
               ...event,
             });
 
+            print("Synced event update to Firebase with ID: $id");
+
             // Mark as synced after successful sync
             await db.update(
               'events',
@@ -93,6 +108,8 @@ class EventModel {
               where: 'id = ?',
               whereArgs: [id],
             );
+
+            print("Marked event as synced locally.");
           } catch (e) {
             print('Error syncing event update to Firebase: $e');
             // Optionally implement retry logic or mark the record for later synchronization
@@ -106,7 +123,7 @@ class EventModel {
 
       return rowsAffected;
     } catch (e) {
-      print('Error updating event: $e');
+      print('Error updating event locally: $e');
       return 0; // Indicate failure
     }
   }
@@ -119,6 +136,8 @@ class EventModel {
       // Delete from local database
       final rowsAffected = await db.delete('events', where: 'id = ?', whereArgs: [id]);
 
+      print("Deleted $rowsAffected event(s) locally with ID: $id");
+
       bool connected = await _databaseHelper.isConnectedToInternet();
       if (rowsAffected > 0 && connected) {
         try {
@@ -126,16 +145,19 @@ class EventModel {
           final firestore = FirebaseFirestore.instance;
           await firestore.collection('events').doc(id.toString()).delete();
 
+          print("Synced event deletion to Firebase with ID: $id");
           // No need to mark as synced since it's deleted
         } catch (e) {
           print("Error syncing event deletion to Firebase: $e");
           // Optionally implement retry logic or mark the deletion for later synchronization
         }
+      } else if (rowsAffected > 0) {
+        print("No internet connection. Event deletion will be synced when online.");
       }
 
       return rowsAffected;
     } catch (e) {
-      print("Error deleting event: $e");
+      print("Error deleting event locally: $e");
       return 0; // Indicate no rows were deleted in case of an error
     }
   }
@@ -152,6 +174,8 @@ class EventModel {
         where: 'email = ? AND synced = 1',
         whereArgs: [email],
       );
+
+      print("Fetched ${localEvents.length} synced event(s) locally for email: $email");
 
       bool connected = await _databaseHelper.isConnectedToInternet();
       if (connected) {
@@ -170,10 +194,13 @@ class EventModel {
             return eventData;
           }).toList();
 
+          print("Fetched ${events.length} event(s) from Firebase for email: $email");
+
           // Sync Firebase data to local database
           for (var event in events) {
             await db.insert('events', event,
                 conflictAlgorithm: ConflictAlgorithm.replace);
+            print("Synced event with ID ${event['id']} to local database.");
           }
 
           return events;
@@ -224,6 +251,7 @@ class EventModel {
 
       if (result.isNotEmpty) {
         event = result.first;
+        print("Fetched event locally with ID: $eventId");
       }
 
       if (event == null) {
@@ -250,11 +278,15 @@ class EventModel {
                 event,
                 conflictAlgorithm: ConflictAlgorithm.replace,
               );
+
+              print("Synced event from Firebase with ID: $eventId to local database.");
             }
           } catch (e) {
             print("Error fetching event by ID from Firebase: $e");
             // Optionally handle the error
           }
+        } else {
+          print("No internet connection. Cannot fetch event with ID: $eventId from Firebase.");
         }
       }
     } catch (e) {

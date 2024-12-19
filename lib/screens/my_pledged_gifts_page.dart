@@ -141,7 +141,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
                   } else {
                     final Map<String, dynamic> event = snapshot.data!;
                     final String eventName = event['name'] ?? 'Unknown Event';
-                    final String eventDeadline = event['deadline'] ?? '';
+                    final String eventDeadline = event['date'] ?? '';
                     final String formattedDeadline = _formatDate(eventDeadline);
 
                     return FutureBuilder<String>(
@@ -156,7 +156,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Event: $eventName'),
-                              Text('Due Date: $formattedDeadline'),
+                              Text('Event Date: $formattedDeadline'),
                               Text('Event Owner: ${ownerSnapshot.data}'),
                             ],
                           );

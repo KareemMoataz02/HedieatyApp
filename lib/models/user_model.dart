@@ -740,4 +740,54 @@ class UserModel {
       return false;
     }
   }
+
+  /// Retrieves the FCM token for a user based on their email from the local SQLite database.
+  Future<String?> getFcmTokenFromFirebase(String email) async {
+    try {
+      // Check for an active internet connection
+      bool isConnected = await _databaseHelper.isConnectedToInternet();
+      if (!isConnected) {
+        print("No internet connection. Cannot fetch FCM token.");
+        return null;
+      }
+
+      // Initialize Firestore instance
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+      // Query the 'users' collection for the document with the matching email
+      QuerySnapshot querySnapshot = await firestore
+          .collection('users')
+          .where('email', isEqualTo: email.toLowerCase())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Extract the 'fcm_token' field from the document
+        Map<String, dynamic> docData = querySnapshot.docs.first.data() as Map<
+            String,
+            dynamic>;
+
+        // Ensure the 'fcm_token' exists and is a non-empty string
+        if (docData.containsKey('fcm_token')) {
+          String? fcmToken = docData['fcm_token'] as String?;
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            print("FCM Token for $email: $fcmToken");
+            return fcmToken;
+          } else {
+            print("FCM Token is null or empty for $email.");
+            return null;
+          }
+        } else {
+          print("'fcm_token' field does not exist for $email.");
+          return null;
+        }
+      } else {
+        print("No user found with email: $email");
+        return null;
+      }
+    } catch (e) {
+      print("Error fetching FCM token from Firebase: $e");
+      return null;
+    }
+  }
 }

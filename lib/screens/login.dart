@@ -214,15 +214,15 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 20),
                     // Phone Number Field (Optional)
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: InputDecoration(
-                        labelText: 'Phone +201XXXXXXXXX',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
+                    // TextFormField(
+                    //   controller: _phoneController,
+                    //   decoration: InputDecoration(
+                    //     labelText: 'Phone +201XXXXXXXXX',
+                    //     border: OutlineInputBorder(),
+                    //     prefixIcon: Icon(Icons.phone),
+                    //   ),
+                    //   keyboardType: TextInputType.phone,
+                    // ),
                     SizedBox(height: 20),
                     // Password Field
                     TextFormField(
