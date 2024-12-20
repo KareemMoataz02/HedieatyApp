@@ -9,7 +9,8 @@ import 'package:hedieaty/services/connectivity_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import './services/notifications.dart';
-import 'package:fluttertoast/fluttertoast.dart'; // For displaying toasts
+import 'package:fluttertoast/fluttertoast.dart';
+import 'firebase_options.dart';
 
 // Global instance of Flutter Local Notifications Plugin
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -65,6 +66,7 @@ void main() async {
 
   runApp(HedieatyApp(connectivityService));
 }
+
 
 class HedieatyApp extends StatelessWidget {
   final ConnectivityService connectivityService;
@@ -168,9 +170,10 @@ class _AppState extends State<AppState> {
 
   @override
   Widget build(BuildContext context) {
-    return isLoggedIn && email != null
-        ? HomePage(email: email!) // Go to HomePage if logged in
-        : LoginPage(); // Go to LoginPage if not logged in
+    // return isLoggedIn && email != null
+    //     ? HomePage(email: email!) // Go to HomePage if logged in
+    //     : LoginPage(); // Go to LoginPage if not logged in
+    return LoginPage();
   }
 
   @override

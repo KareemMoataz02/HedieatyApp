@@ -29,7 +29,7 @@ class GiftDetailsPage extends StatelessWidget {
                   child: gift['image_path'] != null && gift['image_path'].isNotEmpty
                       ? GiftImage(base64Image: gift['image_path'])
                       : Image.asset(
-                    'assets/gift_placeholder.png', // Ensure you have this asset
+                    'Assets/logo.jpeg', // Ensure you have this asset
                     fit: BoxFit.cover,
                   ),
                 ),

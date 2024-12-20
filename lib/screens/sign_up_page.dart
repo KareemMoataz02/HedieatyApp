@@ -155,9 +155,11 @@ class _SignUpPageState extends State<SignUpPage> {
         title: Text('Sign Up'),
         backgroundColor: Colors.deepPurple, // Consistent color scheme
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         child: Column(
+
           mainAxisSize: MainAxisSize.min,
           children: [
             // Profile Image Picker

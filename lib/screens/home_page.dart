@@ -479,7 +479,7 @@ class _HomePageState extends State<HomePage> {
   /// Builds the user's profile image in the drawer, handling Base64 and file paths
   ImageProvider _buildUserImage(String imagePath) {
     if (imagePath.isEmpty) {
-      return AssetImage('assets/default_avatar.png');
+      return AssetImage('Assets/logo.jpeg');
     }
 
     // Determine if imagePath is a Base64 string
@@ -498,7 +498,7 @@ class _HomePageState extends State<HomePage> {
         return MemoryImage(imageBytes);
       } catch (e) {
         print("Error decoding Base64 user image: $e");
-        return AssetImage('assets/default_avatar.png');
+        return AssetImage('Assets/logo.jpeg');
       }
     } else {
       // Treat imagePath as a file path
@@ -506,7 +506,7 @@ class _HomePageState extends State<HomePage> {
       if (imageFile.existsSync()) {
         return FileImage(imageFile);
       } else {
-        return AssetImage('assets/default_avatar.png');
+        return AssetImage('Assets/logo.jpeg');
       }
     }
   }
@@ -514,7 +514,7 @@ class _HomePageState extends State<HomePage> {
   /// Builds the friend's image widget, handling Base64 strings and file paths
   ImageProvider _buildFriendImage(String imagePath) {
     if (imagePath.isEmpty) {
-      return AssetImage('assets/default_avatar.png');
+      return AssetImage('Assets/logo.jpeg');
     }
 
     // Determine if imagePath is a Base64 string
@@ -533,7 +533,7 @@ class _HomePageState extends State<HomePage> {
         return MemoryImage(imageBytes);
       } catch (e) {
         print("Error decoding Base64 friend image: $e");
-        return AssetImage('assets/default_avatar.png');
+        return AssetImage('Assets/logo.jpeg');
       }
     } else {
       // Treat imagePath as a file path
@@ -541,7 +541,7 @@ class _HomePageState extends State<HomePage> {
       if (imageFile.existsSync()) {
         return FileImage(imageFile);
       } else {
-        return AssetImage('assets/default_avatar.png');
+        return AssetImage('Assets/logo.jpeg');
       }
     }
   }

@@ -376,7 +376,7 @@ class FriendModel {
         print("No accepted friends found for userId: $userId");
       } else {
         print("Accepted friends list:");
-        print(friends);
+
       }
     } catch (e) {
       print('Error retrieving accepted friends: $e');

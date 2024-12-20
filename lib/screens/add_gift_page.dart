@@ -58,20 +58,19 @@ class _AddGiftPageState extends State<AddGiftPage> {
 
       // Validate image if changed
       if (selectedImageBase64 == null || selectedImageBase64!.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please upload an image.')),
-        );
-        return;
-      }
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(content: Text('Please upload an image.')),
+        // );
+        // return;
 
-      // Ensure the image is valid
-      try {
-        base64Decode(selectedImageBase64!);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid image data.')),
-        );
-        return;
+      // // Ensure the image is valid
+      // try {
+      //   base64Decode(selectedImageBase64!);
+      // } catch (e) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(content: Text('Invalid image data.')),
+      //   );
+      //   return;
       }
 
       // Prepare the gift data
@@ -82,7 +81,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
         'price': priceValue,
         'status': giftStatus,
         'event_id': widget.eventId, // Associate with the current event
-        'image_path': selectedImageBase64!, // Save the Base64 image string
+        'image_path': selectedImageBase64, // Save the Base64 image string
       };
 
       // Save the gift to the database
@@ -149,6 +148,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
               children: [
                 // Gift Name Field
                 TextFormField(
+                  key:const Key('gift_name_field'),
                   controller: giftNameController,
                   decoration: InputDecoration(
                     labelText: 'Gift Name',
@@ -165,6 +165,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
 
                 // Description Field
                 TextFormField(
+                  key: const Key('gift_description_field'),
                   controller: descriptionController,
                   decoration: InputDecoration(
                     labelText: 'Description',
@@ -182,6 +183,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
 
                 // Category Field
                 TextFormField(
+                  key:const Key('gift_category_field'),
                   controller: categoryController,
                   decoration: InputDecoration(
                     labelText: 'Category',
@@ -198,6 +200,7 @@ class _AddGiftPageState extends State<AddGiftPage> {
 
                 // Price Field
                 TextFormField(
+                  key:const Key('gift_price_field'),
                   controller: priceController,
                   decoration: InputDecoration(
                     labelText: 'Price',

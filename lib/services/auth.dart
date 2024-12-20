@@ -2,15 +2,14 @@
 
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'database_helper.dart'; // Ensure the correct relative path
 import 'package:flutter/material.dart';
-
 import '../models/user_model.dart';
+
 
 class AuthService {
   final FirebaseAuth _firebaseAuth;
@@ -149,7 +148,6 @@ class AuthService {
       String? newFcmToken = await _messaging.getToken();
 
       if (newFcmToken == null) {
-        print("FCM Token is null.");
         return;
       }
 
@@ -172,15 +170,10 @@ class AuthService {
             },
             SetOptions(merge: true),
           );
-          print("FCM Token added/updated in Firestore.");
 
           // Update the local SQLite database
           await _userModel.updateFcmTokenInDatabase(newFcmToken, email);
-        } else {
-          print("FCM Token is the same. No update needed.");
         }
-      } else {
-        print("User document not found in Firestore.");
       }
     } catch (e) {
       print("Error updating FCM token: $e");

@@ -3,8 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/database_helper.dart';
+import 'package:permission_handler/permission_handler.dart'; // Import permission_handler
 import 'event_list_page.dart';
 import '../services/image_converter.dart'; // Ensure the path is correct
 import '../models/friend_model.dart';
@@ -69,9 +70,9 @@ class ProfilePage extends HookWidget {
 
         if (user != null) {
           final updatedRows = await userModel.updateUser(user['id'], {field: value});
-          if (value == 1 || value == 0) {
-            await userModel.updateNotificationStatusInFirebase(
-                user['email'], value);
+          if (field == 'notifications') {
+            await userModel.updateNotificationStatusInFirebase(user['email'], value);
+            // You can add additional logic here if needed
           }
           if (updatedRows > 0) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -184,7 +185,7 @@ class ProfilePage extends HookWidget {
                 : (imagePath.value.length > 100
                 ? MemoryImage(base64Decode(imagePath.value))
                 : FileImage(File(imagePath.value)) as ImageProvider)
-                : AssetImage('assets/logo.jpeg') as ImageProvider,
+                : AssetImage('Assets/logo.jpeg') as ImageProvider,
           ),
           if (isEditable)
             Positioned(
@@ -302,9 +303,48 @@ class ProfilePage extends HookWidget {
           SwitchListTile(
             title: Text('Enable Notifications'),
             value: notificationsEnabled.value,
-            onChanged: (value) {
-              notificationsEnabled.value = value;
-              updateNotifications(value);
+            onChanged: (value) async {
+              if (value) {
+                // Request notification permission
+                PermissionStatus status = await Permission.notification.status;
+                if (!status.isGranted) {
+                  status = await Permission.notification.request();
+                }
+
+                if (status.isGranted) {
+                  // Permission granted, update the state and backend
+                  notificationsEnabled.value = true;
+                  updateNotifications(value);
+                } else if (status.isPermanentlyDenied) {
+                  // Permission permanently denied, open app settings
+                  ScaffoldMessenger.of(context as BuildContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Notification permissions are permanently denied. Please enable them from settings.'),
+                      action: SnackBarAction(
+                        label: 'Settings',
+                        onPressed: () {
+                          openAppSettings();
+                        },
+                      ),
+                    ),
+                  );
+                  notificationsEnabled.value = false;
+                } else {
+                  // Permission denied, show a message and do not update the state
+                  ScaffoldMessenger.of(context as BuildContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Notification permission denied. Please enable it from settings to receive notifications.'),
+                    ),
+                  );
+                  notificationsEnabled.value = false;
+                }
+              } else {
+                // User is disabling notifications
+                notificationsEnabled.value = false;
+                updateNotifications(value);
+              }
             },
             secondary: Icon(Icons.notifications),
           ),
@@ -351,7 +391,7 @@ class ProfilePage extends HookWidget {
                           : (friend['imagePath'].length > 100
                           ? MemoryImage(base64Decode(friend['imagePath']))
                           : FileImage(File(friend['imagePath'])) as ImageProvider)
-                          : AssetImage('assets/default_avatar.png') as ImageProvider,
+                          : AssetImage('Assets/logo.jpeg') as ImageProvider,
                     ),
                     SizedBox(width: 16.0),
                     // Friend's Details (Non-tappable)

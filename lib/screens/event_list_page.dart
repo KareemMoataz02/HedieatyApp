@@ -143,6 +143,7 @@ class _EventListPageState extends State<EventListPage> {
                       children: [
                         // Event Name
                         TextFormField(
+                          key:const Key('event_name_field'),
                           controller: nameController,
                           decoration: InputDecoration(labelText: 'Event Name'),
                           validator: (value) {
@@ -155,6 +156,7 @@ class _EventListPageState extends State<EventListPage> {
                         SizedBox(height: 10),
                         // Category
                         DropdownButtonFormField<String>(
+                          key:const Key('event_category_field'),
                           value: formSelectedCategory,
                           decoration: InputDecoration(labelText: 'Category'),
                           items: ['Formal', 'Personal', 'Gathering']
@@ -175,6 +177,7 @@ class _EventListPageState extends State<EventListPage> {
                         SizedBox(height: 10),
                         // Status
                         DropdownButtonFormField<String>(
+                          key: const Key('event_status_field'),
                           value: formSelectedStatus,
                           decoration: InputDecoration(labelText: 'Status'),
                           items: ['Upcoming', 'Current', 'Past']
@@ -201,6 +204,7 @@ class _EventListPageState extends State<EventListPage> {
                                   'Date: ${DateFormat('yyyy-MM-dd').format(eventDate)}'),
                             ),
                             IconButton(
+                              key: const Key('event_date_field'),
                               icon: Icon(Icons.calendar_today),
                               onPressed: () async {
                                 final picked = await showDatePicker(
@@ -221,6 +225,7 @@ class _EventListPageState extends State<EventListPage> {
                         SizedBox(height: 10),
                         // Location
                         TextFormField(
+                          key: const Key('event_locate_field'),
                           controller: locationController,
                           decoration: InputDecoration(labelText: 'Location'),
                           // Assuming location is optional; no validator
@@ -228,6 +233,7 @@ class _EventListPageState extends State<EventListPage> {
                         SizedBox(height: 10),
                         // Description
                         TextFormField(
+                          key: const Key('event_description_field'),
                           controller: descriptionController,
                           decoration: InputDecoration(labelText: 'Description'),
                           maxLines: 3,
