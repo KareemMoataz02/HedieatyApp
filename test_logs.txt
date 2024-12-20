@@ -1,0 +1,327 @@
+﻿Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 72.0.0 (78.0.0 available)
+  _flutterfire_internals 1.3.47 (1.3.48 available)
+  analyzer 6.7.0 (7.1.0 available)
+  archive 3.6.1 (4.0.2 available)
+  async 2.11.0 (2.12.0 available)
+  boolean_selector 2.1.1 (2.1.2 available)
+  build 2.4.1 (2.4.2 available)
+  build_config 1.1.1 (1.1.2 available)
+  build_daemon 4.0.2 (4.0.3 available)
+  build_resolvers 2.4.2 (2.4.3 available)
+  build_runner 2.4.13 (2.4.14 available)
+  build_runner_core 7.3.2 (8.0.0 available)
+  characters 1.3.0 (1.4.0 available)
+  clock 1.1.1 (1.1.2 available)
+  cloud_firestore 5.5.0 (5.6.0 available)
+  cloud_firestore_platform_interface 6.5.0 (6.6.0 available)
+  cloud_firestore_web 4.3.4 (4.4.0 available)
+  collection 1.18.0 (1.19.1 available)
+  connectivity_plus 6.1.0 (6.1.1 available)
+  dart_style 2.3.7 (3.0.0 available)
+  fake_async 1.3.1 (1.3.2 available)
+  file 7.0.0 (7.0.1 available)
+  firebase_auth 5.3.3 (5.3.4 available)
+  firebase_auth_platform_interface 7.4.9 (7.4.10 available)
+  firebase_auth_web 5.13.4 (5.13.5 available)
+  firebase_core 3.8.1 (3.9.0 available)
+  firebase_core_platform_interface 5.3.1 (5.4.0 available)
+  firebase_core_web 2.18.2 (2.19.0 available)
+  flutter_hooks 0.18.6 (0.20.5 available)
+  flutter_lints 4.0.0 (5.0.0 available)
+  flutter_plugin_android_lifecycle 2.0.23 (2.0.24 available)
+  http_parser 4.0.2 (4.1.1 available)
+  image 4.3.0 (4.5.2 available)
+  image_picker 0.8.9 (1.1.2 available)
+  image_picker_for_web 2.2.0 (3.0.6 available)
+  intl 0.19.0 (0.20.1 available)
+  leak_tracker 10.0.5 (10.0.8 available)
+  leak_tracker_flutter_testing 3.0.5 (3.0.9 available)
+  lints 4.0.0 (5.1.0 available)
+  macros 0.1.2-main.4 (0.1.3-main.0 available)
+  matcher 0.12.16+1 (0.12.17 available)
+  material_color_utilities 0.11.1 (0.12.0 available)
+  meta 1.15.0 (1.16.0 available)
+  mime 1.0.6 (2.0.0 available)
+  mockito 5.4.4 (5.4.5 available)
+  package_config 2.1.0 (2.1.1 available)
+  path 1.9.0 (1.9.1 available)
+  platform 3.1.5 (3.1.6 available)
+  process 5.0.2 (5.0.3 available)
+  pub_semver 2.1.4 (2.1.5 available)
+  shared_preferences 2.3.3 (2.3.4 available)
+  shared_preferences_android 2.3.3 (affected by advisory: [^0], 2.4.0 available)
+  shared_preferences_foundation 2.5.3 (2.5.4 available)
+  shelf 1.4.1 (1.4.2 available)
+  source_gen 1.5.0 (2.0.0 available)
+  source_span 1.10.0 (1.10.1 available)
+  stack_trace 1.11.1 (1.12.0 available)
+  string_scanner 1.2.0 (1.4.1 available)
+  term_glyph 1.2.1 (1.2.2 available)
+  test_api 0.7.2 (0.7.4 available)
+  vm_service 14.2.5 (15.0.0 available)
+  watcher 1.1.0 (1.1.1 available)
+  webdriver 3.0.3 (3.0.4 available)
+Got dependencies!
+Dependencies are affected by security advisories:
+  [^0]: https://github.com/advisories/GHSA-3hpf-ff72-j67p
+63 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Running Gradle task 'assembleDebug'...                             14.3s
+ΓêÜ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...           4.6s
+I/xample.hedieaty(14942): Compiler allocated 5174KB to compile void android.view.ViewRootImpl.performTraversals()
+I/flutter (14942): 00:00 +0: End-to-end scenario: Login -> Home -> EventList -> GiftList -> Add Gift -> Gift Details
+D/CompatChangeReporter(14942): Compat change id reported: 3400644; UID 10210; state: ENABLED
+I/FLTFireBGExecutor(14942): Creating background FlutterEngine instance, with args: [--start-paused, --enable-dart-profiling]
+D/FLTFireContextHolder(14942): received application context.
+I/FLTFireMsgService(14942): FlutterFirebaseMessagingBackgroundService started!
+I/flutter (14942): Database cleared
+I/ImeTracker(14942): com.example.hedieaty:419e1639: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F....ID 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:10408a2: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InputConnectionAdaptor(14942): The input method toggled cursor monitoring on
+D/EGL_emulation(14942): app_time_stats: avg=1333.72ms min=545.21ms max=2822.85ms count=3
+I/ImeTracker(14942): com.example.hedieaty:6e12a23d: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:c53d3e1e: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:ad2f7768: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InsetsController(14942): show(ime(), fromIme=true)
+W/InteractionJankMonitor(14942): Initializing without READ_DEVICE_CONFIG permission. enabled=false, interval=1, missedFrameThreshold=3, frameTimeThreshold=64, package=com.example.hedieaty
+D/EGL_emulation(14942): app_time_stats: avg=1435.93ms min=457.99ms max=3042.45ms count=3
+I/ImeTracker(14942): com.example.hedieaty:77213c81: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:6e12a23d: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InputConnectionAdaptor(14942): The input method toggled cursor monitoring on
+I/ImeTracker(14942): com.example.hedieaty:10408a2: onShown
+D/InputConnectionAdaptor(14942): The input method toggled cursor monitoring off
+D/InputConnectionAdaptor(14942): The input method toggled cursor monitoring on
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:ad2f7768: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:77213c81: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+I/flutter (14942): Events table created or already exists.
+D/EGL_emulation(14942): app_time_stats: avg=635.20ms min=496.90ms max=773.49ms count=2
+I/flutter (14942): Connected to the internet. Synchronizing databases...
+I/xample.hedieaty(14942): Background concurrent mark compact GC freed 2594KB AllocSpace bytes, 16(648KB) LOS objects, 49% free, 4069KB/8139KB, paused 1.312ms,6.887ms total 70.741ms
+W/xample.hedieaty(14942): ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/talkback/talkback.apk' with 1 weak references
+W/xample.hedieaty(14942): ApkAssets: Deleting an ApkAssets object '/vendor/overlay/EmulatorTalkBackOverlay/EmulatorTalkBackOverlay.apk' with 1 weak references
+I/flutter (14942): Connected to the internet. Synchronizing databases...
+W/DynamiteModule(14942): Local module descriptor class for com.google.android.gms.providerinstaller.dynamite not found.
+I/DynamiteModule(14942): Considering local module com.google.android.gms.providerinstaller.dynamite:0 and remote module com.google.android.gms.providerinstaller.dynamite:0
+W/ProviderInstaller(14942): Failed to load providerinstaller module: No acceptable module com.google.android.gms.providerinstaller.dynamite found. Local version is 0 and remote version is 0.
+D/ApplicationLoaders(14942): Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+D/nativeloader(14942): Configuring clns-9 for other apk /system/framework/com.android.media.remotedisplay.jar. target_sdk_version=35, uses_libraries=ALL, library_path=/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/lib/x86_64:/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+D/nativeloader(14942): Configuring clns-10 for other apk /system/framework/com.android.location.provider.jar. target_sdk_version=35, uses_libraries=ALL, library_path=/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/lib/x86_64:/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+D/ApplicationLoaders(14942): Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+D/ApplicationLoaders(14942): Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+W/xample.hedieaty(14942): Loading /data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/oat/x86_64/base.odex non-executable as it requires an image which we failed to load
+D/nativeloader(14942): Configuring clns-11 for other apk /data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/lib/x86_64:/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+W/ProviderInstaller(14942): Failed to report request stats: com.google.android.gms.common.security.ProviderInstallerImpl.reportRequestStats [class android.content.Context, long, long]
+D/nativeloader(14942): Load /data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/base.apk!/lib/x86_64/libconscrypt_gmscore_jni.so using ns clns-11 from class loader (caller=/data/app/~~0lSOIh5xvDH9F1zivTrRyQ==/com.google.android.gms-C73nkpYts1N_2k54sj-z4A==/base.apk!classes3.dex): ok
+V/NativeCrypto(14942): Registering com/google/android/gms/org/conscrypt/NativeCrypto's 305 native methods...
+E/GoogleApiManager(14942): Failed to get service from broker. 
+E/GoogleApiManager(14942): java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+E/GoogleApiManager(14942): 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3242)
+E/GoogleApiManager(14942): 	at android.os.Parcel.createException(Parcel.java:3226)
+E/GoogleApiManager(14942): 	at android.os.Parcel.readException(Parcel.java:3209)
+E/GoogleApiManager(14942): 	at android.os.Parcel.readException(Parcel.java:3151)
+E/GoogleApiManager(14942): 	at aoni.a(:com.google.android.gms@244933038@24.49.33 (260800-705592033):36)
+E/GoogleApiManager(14942): 	at aolp.z(:com.google.android.gms@244933038@24.49.33 (260800-705592033):143)
+E/GoogleApiManager(14942): 	at ansi.run(:com.google.android.gms@244933038@24.49.33 (260800-705592033):54)
+E/GoogleApiManager(14942): 	at android.os.Handler.handleCallback(Handler.java:959)
+E/GoogleApiManager(14942): 	at android.os.Handler.dispatchMessage(Handler.java:100)
+E/GoogleApiManager(14942): 	at butk.mw(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+E/GoogleApiManager(14942): 	at butk.dispatchMessage(:com.google.android.gms@244933038@24.49.33 (260800-705592033):5)
+E/GoogleApiManager(14942): 	at android.os.Looper.loopOnce(Looper.java:232)
+E/GoogleApiManager(14942): 	at android.os.Looper.loop(Looper.java:317)
+E/GoogleApiManager(14942): 	at android.os.HandlerThread.run(HandlerThread.java:85)
+W/CondFlagRegistrar(14942): Failed to register com.google.android.gms.providerinstaller#com.google.android.gms
+W/CondFlagRegistrar(14942): enkr: 17: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null}
+W/CondFlagRegistrar(14942): 	at enkt.a(:com.google.android.gms@244933038@24.49.33 (260800-705592033):13)
+W/CondFlagRegistrar(14942): 	at fgtx.d(:com.google.android.gms@244933038@24.49.33 (260800-705592033):3)
+W/CondFlagRegistrar(14942): 	at fgtz.run(:com.google.android.gms@244933038@24.49.33 (260800-705592033):130)
+W/CondFlagRegistrar(14942): 	at fgvs.execute(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+W/CondFlagRegistrar(14942): 	at fgua.h(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+W/CondFlagRegistrar(14942): 	at fgua.l(:com.google.android.gms@244933038@24.49.33 (260800-705592033):101)
+W/CondFlagRegistrar(14942): 	at fgua.p(:com.google.android.gms@244933038@24.49.33 (260800-705592033):19)
+W/CondFlagRegistrar(14942): 	at efmn.hB(:com.google.android.gms@244933038@24.49.33 (260800-705592033):35)
+W/CondFlagRegistrar(14942): 	at dupi.run(:com.google.android.gms@244933038@24.49.33 (260800-705592033):14)
+W/CondFlagRegistrar(14942): 	at fgvs.execute(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+W/CondFlagRegistrar(14942): 	at dupj.b(:com.google.android.gms@244933038@24.49.33 (260800-705592033):18)
+W/CondFlagRegistrar(14942): 	at dupy.b(:com.google.android.gms@244933038@24.49.33 (260800-705592033):36)
+W/CondFlagRegistrar(14942): 	at duqa.c(:com.google.android.gms@244933038@24.49.33 (260800-705592033):26)
+W/CondFlagRegistrar(14942): 	at anpq.c(:com.google.android.gms@244933038@24.49.33 (260800-705592033):9)
+W/CondFlagRegistrar(14942): 	at ansg.q(:com.google.android.gms@244933038@24.49.33 (260800-705592033):48)
+W/CondFlagRegistrar(14942): 	at ansg.d(:com.google.android.gms@244933038@24.49.33 (260800-705592033):10)
+W/CondFlagRegistrar(14942): 	at ansg.g(:com.google.android.gms@244933038@24.49.33 (260800-705592033):211)
+W/CondFlagRegistrar(14942): 	at ansg.onConnectionFailed(:com.google.android.gms@244933038@24.49.33 (260800-705592033):2)
+W/CondFlagRegistrar(14942): 	at ansi.run(:com.google.android.gms@244933038@24.49.33 (260800-705592033):82)
+W/CondFlagRegistrar(14942): 	at android.os.Handler.handleCallback(Handler.java:959)
+W/CondFlagRegistrar(14942): 	at android.os.Handler.dispatchMessage(Handler.java:100)
+W/CondFlagRegistrar(14942): 	at butk.mw(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+W/CondFlagRegistrar(14942): 	at butk.dispatchMessage(:com.google.android.gms@244933038@24.49.33 (260800-705592033):5)
+W/CondFlagRegistrar(14942): 	at android.os.Looper.loopOnce(Looper.java:232)
+W/CondFlagRegistrar(14942): 	at android.os.Looper.loop(Looper.java:317)
+W/CondFlagRegistrar(14942): 	at android.os.HandlerThread.run(HandlerThread.java:85)
+W/CondFlagRegistrar(14942): Caused by: anoi: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null}
+W/CondFlagRegistrar(14942): 	at aolb.a(:com.google.android.gms@244933038@24.49.33 (260800-705592033):15)
+W/CondFlagRegistrar(14942): 	at anpt.a(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+W/CondFlagRegistrar(14942): 	at anpq.c(:com.google.android.gms@244933038@24.49.33 (260800-705592033):5)
+W/CondFlagRegistrar(14942): 	... 12 more
+W/xample.hedieaty(14942): Accessing hidden method Ldalvik/system/VMStack;->getStackClass2()Ljava/lang/Class; (unsupported, reflection, allowed)
+I/enki.a  (14942): Unable to retrieve flag snapshot for com.google.android.gms.providerinstaller#com.google.android.gms, using defaults.
+W/xample.hedieaty(14942): Accessing hidden method Ljava/security/spec/ECParameterSpec;->getCurveName()Ljava/lang/String; (unsupported, reflection, allowed)
+I/ProviderInstaller(14942): Installed default security provider GmsCore_OpenSSL
+D/TrafficStats(14942): tagSocket(222) with statsTag=0xffffffff, statsUid=-1
+W/xample.hedieaty(14942): Accessing hidden field Ljava/net/Socket;->impl:Ljava/net/SocketImpl; (unsupported, reflection, allowed)
+W/xample.hedieaty(14942): Accessing hidden method Ljava/security/spec/ECParameterSpec;->setCurveName(Ljava/lang/String;)V (unsupported, reflection, allowed)
+I/FirebaseAuth(14942): Logging in as kareemmoataz13@gmail.com with empty reCAPTCHA token
+W/System  (14942): Ignoring header X-Firebase-Locale because its value was null.
+D/TrafficStats(14942): tagSocket(226) with statsTag=0xffffffff, statsUid=-1
+W/System  (14942): Ignoring header X-Firebase-Locale because its value was null.
+D/FirebaseAuth(14942): Notifying id token listeners about user ( bHSYF5JXoQcULYnlL4V9hwiLgTL2 ).
+D/FirebaseAuth(14942): Notifying auth state listeners about user ( bHSYF5JXoQcULYnlL4V9hwiLgTL2 ).
+I/flutter (14942): Synchronization complete.
+I/flutter (14942): Synchronization complete.
+I/flutter (14942): Synchronization complete.
+D/EGL_emulation(14942): app_time_stats: avg=1576.91ms min=112.08ms max=4470.61ms count=3
+I/flutter (14942): Connected to the internet. Synchronizing databases...
+I/flutter (14942): Synchronization complete.
+W/WindowOnBackDispatcher(14942): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher(14942): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+D/EGL_emulation(14942): app_time_stats: avg=5052.27ms min=5052.27ms max=5052.27ms count=1
+I/ImeTracker(14942): com.example.hedieaty:3ebf8c78: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false
+D/InsetsController(14942): hide(ime(), fromIme=true)
+D/EGL_emulation(14942): app_time_stats: avg=583.17ms min=1.63ms max=10426.56ms count=18
+I/ImeTracker(14942): com.example.hedieaty:cd23e44e: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+I/ImeTracker(14942): com.example.hedieaty:3ebf8c78: onHidden
+I/flutter (14942): Connected to the internet. Synchronizing databases...
+E/GoogleApiManager(14942): Failed to get service from broker. 
+E/GoogleApiManager(14942): java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+E/GoogleApiManager(14942): 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3242)
+E/GoogleApiManager(14942): 	at android.os.Parcel.createException(Parcel.java:3226)
+E/GoogleApiManager(14942): 	at android.os.Parcel.readException(Parcel.java:3209)
+E/GoogleApiManager(14942): 	at android.os.Parcel.readException(Parcel.java:3151)
+E/GoogleApiManager(14942): 	at aoni.a(:com.google.android.gms@244933038@24.49.33 (260800-705592033):36)
+E/GoogleApiManager(14942): 	at aolp.z(:com.google.android.gms@244933038@24.49.33 (260800-705592033):143)
+E/GoogleApiManager(14942): 	at ansi.run(:com.google.android.gms@244933038@24.49.33 (260800-705592033):54)
+E/GoogleApiManager(14942): 	at android.os.Handler.handleCallback(Handler.java:959)
+E/GoogleApiManager(14942): 	at android.os.Handler.dispatchMessage(Handler.java:100)
+E/GoogleApiManager(14942): 	at butk.mw(:com.google.android.gms@244933038@24.49.33 (260800-705592033):1)
+E/GoogleApiManager(14942): 	at butk.dispatchMessage(:com.google.android.gms@244933038@24.49.33 (260800-705592033):5)
+E/GoogleApiManager(14942): 	at android.os.Looper.loopOnce(Looper.java:232)
+E/GoogleApiManager(14942): 	at android.os.Looper.loop(Looper.java:317)
+E/GoogleApiManager(14942): 	at android.os.HandlerThread.run(HandlerThread.java:85)
+I/flutter (14942): Synchronization complete.
+I/flutter (14942): Username loaded: Kareem
+I/flutter (14942): Fetched userId: 1 for email: kareemmoataz13@gmail.com
+I/flutter (14942): Fetching friends for userId: 1
+I/flutter (14942): Fetched accepted friends from Firestore and updated local database.
+I/flutter (14942): No accepted friends found for userId: 1
+I/flutter (14942): Number of accepted friends found: 0
+I/flutter (14942): Synchronization complete.
+D/EGL_emulation(14942): app_time_stats: avg=5114.84ms min=5114.84ms max=5114.84ms count=1
+D/EGL_emulation(14942): app_time_stats: avg=5027.82ms min=5027.82ms max=5027.82ms count=1
+W/WindowOnBackDispatcher(14942): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher(14942): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/flutter (14942): Fetched 1 synced event(s) locally for email: kareemmoataz13@gmail.com
+I/flutter (14942): Fetched 1 event(s) from Firebase for email: kareemmoataz13@gmail.com
+I/flutter (14942): Synced event with ID 1 to local database.
+D/EGL_emulation(14942): app_time_stats: avg=1295.28ms min=2.51ms max=4931.39ms count=4
+D/EGL_emulation(14942): app_time_stats: avg=4997.47ms min=4997.47ms max=4997.47ms count=1
+I/flutter (14942): Event owner email: kareemmoataz13@gmail.com
+I/flutter (14942): User Token: eQttrm4tQCODJ7iO1SpErd:APA91bEeijo21e2f2enciX2oKstkjV_Pg618kMbRd5ZdoD7JDanct1LRpGfMMyPKnS-eZAWxvJgUZZJgOkRQJ4CDacJEvsYlPLV-2V8zj6duPiBz0L1V0kM
+I/flutter (14942): User Notifications: 0
+I/flutter (14942): User Owner ID: 1
+D/EGL_emulation(14942): app_time_stats: avg=108.78ms min=10.32ms max=187.38ms count=10
+I/ImeTracker(14942): com.example.hedieaty:c7499b72: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:8cc3db8b: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:cf936869: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:77ddc495: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:cbfb5bc0: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+I/ImeTracker(14942): com.example.hedieaty:39bd58: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:a1449c56: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:bba39df9: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InsetsController(14942): show(ime(), fromIme=true)
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:cf936869: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/EGL_emulation(14942): app_time_stats: avg=1099.62ms min=1.25ms max=21907.03ms count=20
+I/ImeTracker(14942): com.example.hedieaty:30436570: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:ec9056cd: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/ImeTracker(14942): com.example.hedieaty:57ce78eb: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/xample.hedieaty(14942): Background concurrent mark compact GC freed 2470KB AllocSpace bytes, 43(3884KB) LOS objects, 49% free, 6198KB/12MB, paused 1.248ms,8.504ms total 131.502ms
+W/xample.hedieaty(14942): ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/talkback/talkback.apk' with 1 weak references
+W/xample.hedieaty(14942): ApkAssets: Deleting an ApkAssets object '/vendor/overlay/EmulatorTalkBackOverlay/EmulatorTalkBackOverlay.apk' with 1 weak references
+I/ImeTracker(14942): com.example.hedieaty:8cc3db8b: onShown
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+D/EGL_emulation(14942): app_time_stats: avg=107.71ms min=4.02ms max=232.59ms count=11
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+I/ImeTracker(14942): com.example.hedieaty:54898f28: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+D/InputMethodManager(14942): showSoftInput() view=io.flutter.embedding.android.FlutterView{a9c3fea VFE...... .F...... 0,0-1440,3036 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:77ddc495: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:cbfb5bc0: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:39bd58: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:a1449c56: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:bba39df9: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:30436570: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+I/ImeTracker(14942): com.example.hedieaty:5c1f884a: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): getSurroundingText on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+W/RemoteInputConnectionImpl(14942): requestCursorUpdates on inactive InputConnection
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:ec9056cd: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): show(ime(), fromIme=true)
+I/ImeTracker(14942): com.example.hedieaty:54898f28: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+D/InsetsController(14942): hide(ime(), fromIme=true)
+D/EGL_emulation(14942): app_time_stats: avg=74.89ms min=1.77ms max=956.70ms count=15
+D/EGL_emulation(14942): app_time_stats: avg=215.04ms min=43.76ms max=546.67ms count=5
+I/ImeTracker(14942): com.example.hedieaty:fbea8797: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+I/ImeTracker(14942): com.example.hedieaty:5c1f884a: onHidden
+I/flutter (14942): 00:40 +1: (tearDownAll)
+I/flutter (14942): 00:40 +2: All tests passed!
+All tests passed.
