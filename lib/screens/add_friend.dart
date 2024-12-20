@@ -20,18 +20,14 @@ class _AddFriendPageState extends State<AddFriendPage> {
   @override
   void initState() {
     super.initState();
-    // Schedule the _initializeData to run 2 seconds after the first frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        refreshData();
+      }
+    });
+  }
 
-        if (mounted) {
-          refreshData();
-        }
-      });
-    }
-
-
-
-  Future<void>  refreshData() async {
+  Future<void> refreshData() async {
     await fetchRecentFriends();
     await fetchFriendRequests();
   }
@@ -64,12 +60,9 @@ class _AddFriendPageState extends State<AddFriendPage> {
         showDialogMessage('Success', 'Friend request sent');
         refreshData();
       }
-    }
-    else if( userId == user?['id']) {
-      showDialogMessage(
-          'Error', 'You can\'t send a friend request to yourself');
-    }
-    else {
+    } else if (userId == user?['id']) {
+      showDialogMessage('Error', 'You can\'t send a friend request to yourself');
+    } else {
       showDialogMessage('Error', 'No user found with this information');
     }
   }
@@ -82,49 +75,26 @@ class _AddFriendPageState extends State<AddFriendPage> {
     bool connected = await dbHelper.isConnectedToInternet();
     int userId = await getCurrentUserId();
 
-    print('Starting updateFriendRequest: userId=$userId, friendId=$friendId, status=$status');
-
     try {
-      // Update the friend request status
-      print('Updating friend request status...');
       await friendModel.updateFriendRequestStatus(userId, friendId, status);
-      print('Friend request status updated.');
-
-      // Show a dialog message indicating success
       showDialogMessage('Success', status == 'accepted' ? 'Friend request accepted' : 'Friend request declined');
-      print('Success dialog shown.');
 
-      // Send a notification to the friend about the status update
-      print('Fetching friend email...');
       String? friendEmail = await userModel.getEmailById(friendId);
-      if (friendEmail == null) {
-        throw Exception('Friend email not found for friendId: $friendId');
-      }
-      print('Friend email: $friendEmail');
+      if (friendEmail == null) return;
 
-      print('Fetching friend details...');
       var friend = await userModel.getUserByEmail(friendEmail);
-      if (friend == null) {
-        throw Exception('Friend details not found for email: $friendEmail');
-      }
-      print('Friend details fetched.');
+      if (friend == null) return;
 
-      print('Fetching friend notification status...');
       int? friendNotificationStatus = await userModel.getNotificationStatusFromFirebase(friendEmail);
       friendNotificationStatus ??= 0;
-      print('Friend notification status: $friendNotificationStatus');
       String? friendToken = await userModel.getFcmTokenFromFirebase(friendEmail);
-      if (friendToken == null || friendToken.isEmpty) {
-        print('Friend FCM token is null or empty for email: $friendEmail');
-      } else if (friendNotificationStatus == 1 && connected) {
-        print('Preparing to send notification...');
-        // Prepare the notification details
+
+      if (friendToken != null && friendToken.isNotEmpty && friendNotificationStatus == 1 && connected) {
         String notificationTitle = 'Friend Request Update';
         String notificationBody = status == 'accepted'
             ? 'Your friend request was accepted by ${friend['username']}.'
             : 'Your friend request was declined by ${friend['username']}.';
 
-        // Send the notification using NotificationsHelper
         await notificationsHelper.sendNotifications(
           fcmToken: friendToken,
           title: notificationTitle,
@@ -132,24 +102,14 @@ class _AddFriendPageState extends State<AddFriendPage> {
           userId: friendId.toString(),
           type: 'friend_request',
         );
-        print('Notification sent successfully to $friendEmail.');
-      } else {
-        print('Notifications are disabled or no internet connection.');
       }
 
-      // Refresh data after updating the friend request
-      print('Refreshing data...');
       refreshData();
-      print('Data refreshed.');
     } catch (error, stackTrace) {
-      // Show an error message in case of failure
       showDialogMessage('Error', 'An error occurred while updating the friend request. Please try again.');
-      print('Error updating friend request: $error');
-      print('Stack Trace: $stackTrace');
+      print('Error updating friend request: $error\n$stackTrace');
     }
   }
-
-
 
   Future<void> fetchRecentFriends() async {
     int userId = await getCurrentUserId();
@@ -175,10 +135,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
+        title: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        content: Text(message, style: Theme.of(context).textTheme.bodyMedium),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('OK')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('OK', style: TextStyle(color: Theme.of(context).colorScheme.primary))),
         ],
       ),
     );
@@ -189,73 +151,121 @@ class _AddFriendPageState extends State<AddFriendPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Add Friend'),
-        content: TextField(controller: inputController, decoration: InputDecoration(labelText: 'Enter Email or Phone', hintText: 'Email or Phone')),
+        title: Text('Add Friend', style: Theme.of(context).textTheme.titleLarge),
+        content: TextField(
+          controller: inputController,
+          decoration: InputDecoration(
+            labelText: 'Enter Email or Phone',
+            hintText: 'Email or Phone',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () {
-            String input = inputController.text.trim();
-            if (_isValidEmail(input)) {
-              sendFriendRequest(input, isEmail: true);
-              Navigator.of(context).pop();
-            } else {
-              showDialogMessage('Error', 'Please enter a valid email address');
-            }
-          }, child: Text('Add by Email')),
-          TextButton(onPressed: () {
-            String input = inputController.text.trim();
-            if (_isValidPhone(input)) {
-              sendFriendRequest(input, isEmail: false);
-              Navigator.of(context).pop();
-            } else {
-              showDialogMessage('Error', 'Please enter a valid phone number +20**********');
-            }
-          }, child: Text('Add by Phone')),
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              String input = inputController.text.trim();
+              if (_isValidEmail(input)) {
+                sendFriendRequest(input, isEmail: true);
+                Navigator.of(context).pop();
+              } else {
+                showDialogMessage('Error', 'Please enter a valid email address');
+              }
+            },
+            child: Text('Add by Email', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+          ),
+          TextButton(
+            onPressed: () {
+              String input = inputController.text.trim();
+              if (_isValidPhone(input)) {
+                sendFriendRequest(input, isEmail: false);
+                Navigator.of(context).pop();
+              } else {
+                showDialogMessage('Error', 'Please enter a valid phone number +20**********');
+              }
+            },
+            child: Text('Add by Phone', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+          ),
         ],
       ),
     );
   }
 
   bool _isValidEmail(String email) => RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
-
   bool _isValidPhone(String phone) => RegExp(r'^\+?[1-9]\d{1,14}$').hasMatch(phone);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Add Friend')),
+      appBar: AppBar(
+        title: Text('Add Friend', style: Theme.of(context).textTheme.titleLarge),
+        elevation: 4.0,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            ElevatedButton(onPressed: showAddFriendDialog, child: Text('Add Friend by Email or Phone')),
+            ElevatedButton.icon(
+              onPressed: showAddFriendDialog,
+              icon: Icon(Icons.person_add),
+              label: Text('Add Friend by Email or Phone'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+              ),
+            ),
             SizedBox(height: 16),
-            Text('Recent Friends:'),
+            Divider(),
+            Text('Recent Friends:', style: Theme.of(context).textTheme.titleMedium),
+            SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 itemCount: recentFriends.length,
                 itemBuilder: (context, index) {
                   final friend = recentFriends[index];
-                  return ListTile(title: Text(friend['email'] ?? 'No email'), subtitle: Text(friend['phone'] ?? 'No phone'));
+                  return Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                    margin: EdgeInsets.symmetric(vertical: 8.0),
+                    child: ListTile(
+                      leading: CircleAvatar(child: Icon(Icons.person)),
+                      title: Text(friend['email'] ?? 'No email'),
+                      subtitle: Text(friend['phone'] ?? 'No phone'),
+                    ),
+                  );
                 },
               ),
             ),
-            SizedBox(height: 16),
-            Text('Friend Requests:'),
+            Divider(),
+            Text('Friend Requests:', style: Theme.of(context).textTheme.titleMedium),
+            SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 itemCount: friendRequests.length,
                 itemBuilder: (context, index) {
                   final request = friendRequests[index];
-                  return ListTile(
-                    title: Text(request['email'] ?? 'Unknown'),
-                    subtitle: Text('Request Pending'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(icon: Icon(Icons.check), onPressed: () => updateFriendRequest(request['id'], 'accepted')),
-                        IconButton(icon: Icon(Icons.clear), onPressed: () => updateFriendRequest(request['id'], 'declined')),
-                      ],
+                  return Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                    margin: EdgeInsets.symmetric(vertical: 8.0),
+                    child: ListTile(
+                      leading: CircleAvatar(child: Icon(Icons.person)),
+                      title: Text(request['email'] ?? 'Unknown'),
+                      subtitle: Text('Request Pending'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.check, color: Colors.green),
+                            onPressed: () => updateFriendRequest(request['id'], 'accepted'),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.clear, color: Colors.red),
+                            onPressed: () => updateFriendRequest(request['id'], 'declined'),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
